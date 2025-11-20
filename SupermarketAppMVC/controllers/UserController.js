@@ -1,9 +1,10 @@
-const User = require('../models/user');
+﻿const User = require('../models/user');
 
 const showRegister = (req, res) => {
     res.render('register', {
         messages: req.flash('error'),
-        formData: req.flash('formData')[0]
+        formData: req.flash('formData')[0],
+        user: req.session.user
     });
 };
 
@@ -31,6 +32,7 @@ const register = (req, res) => {
 
 const showLogin = (req, res) => {
     res.render('login', {
+        user: req.session.user,
         messages: req.flash('success'),
         errors: req.flash('error')
     });
@@ -207,3 +209,4 @@ module.exports = {
     updateUserRole,
     deleteUser
 };
+

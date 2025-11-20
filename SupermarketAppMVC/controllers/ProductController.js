@@ -1,4 +1,4 @@
-const Product = require('../models/product');
+﻿const Product = require('../models/product');
 const Review = require('../models/review');
 
 const toCurrency = (value, precision = 2) => {
@@ -128,6 +128,7 @@ const ProductController = {
             if (results.length > 0) {
                 res.render('updateProduct', {
                     product: enhanceProductRecord(results[0]),
+                    user: req.session.user,
                     errors: req.flash('error'),
                     messages: req.flash('success')
                 });
@@ -219,3 +220,4 @@ const ProductController = {
 };
 
 module.exports = ProductController;
+

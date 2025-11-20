@@ -1,0 +1,16 @@
+﻿  <footer class="footer">
+    <div class="container">
+      <small>&copy; <%= new Date().getFullYear() %> Supermarket App</small>
+    </div>
+  </footer>
+
+  <% const footerScripts = (typeof extraScripts !== 'undefined' && extraScripts !== null) ? extraScripts : []; %>
+  <% if (Array.isArray(footerScripts)) { %>
+    <% footerScripts.forEach(function (snippet) { %>
+      <%- snippet %>
+    <% }); %>
+  <% } else if (footerScripts) { %>
+    <%- footerScripts %>
+  <% } %>
+</body>
+</html>

@@ -9,6 +9,7 @@ const cartController = require('./controllers/CartController');
 const productController = require('./controllers/ProductController');
 const orderController = require('./controllers/OrderController');
 const reviewController = require('./controllers/ReviewController');
+const { checkAuthenticated, checkAdmin, checkRoles } = require('./middleware');
 const Product = require('./models/product');
 const Order = require('./models/order');
 
@@ -76,41 +77,6 @@ app.use(session({
 }));
 
 app.use(flash());
-
-// Middleware to check if user is logged in
-const checkAuthenticated = (req, res, next) => {
-    if (req.session.user) {
-        return next();
-    } else {
-        req.flash('error', 'Please log in to view this resource');
-        res.redirect('/login');
-    }
-};
-
-// Middleware to check if user is admin
-const checkAdmin = (req, res, next) => {
-    if (req.session.user && req.session.user.role === 'admin') {
-        return next();
-    } else {
-        req.flash('error', 'Access denied');
-        res.redirect('/shopping');
-    }
-};
-
-// Middleware to restrict access based on allowed roles
-const checkRoles = (...roles) => (req, res, next) => {
-    if (req.session.user && roles.includes(req.session.user.role)) {
-        return next();
-    }
-    req.flash('error', 'Access denied');
-    if (req.session.user) {
-        if (req.session.user.role === 'admin') {
-            return res.redirect('/inventory');
-        }
-        return res.redirect('/');
-    }
-    res.redirect('/login');
-};
 
 // Routes
 app.get('/', (req, res) => {

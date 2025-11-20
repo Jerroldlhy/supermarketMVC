@@ -1,41 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <title>Supermarket App | Shopping</title>
-</head>
-<body>
-  <nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="/">Supermarket App</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="collapsibleNavbar">
-        <ul class="navbar-nav ms-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="/cart">View Cart</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/orders/history">Purchase History</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/logout">Logout</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
+﻿<%- include('partials/head', { title: 'Supermarket App | Shopping' }) %>
+<%- include('partials/navbar', { user, activePage: 'shopping' }) %>
 
-  <% const totalProducts = products ? products.length : 0; %>
-  <% const totalInStock = products ? products.reduce((sum, p) => sum + p.quantity, 0) : 0; %>
-  <% const freshArrivals = products ? products.slice(0, Math.min(products.length, 3)) : []; %>
+<% const productList = Array.isArray(products) ? products : []; %>
+<% const totalProducts = productList.length; %>
+<% const totalInStock = productList.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0); %>
+<% const freshArrivals = productList.slice(0, Math.min(productList.length, 3)); %>
+<% const categoryList = Array.isArray(categories) ? categories : []; %>
+<% const currentCategory = typeof activeCategory === 'string' ? activeCategory : ''; %>
+<% const bestList = Array.isArray(bestSellers) ? bestSellers : []; %>
 
-  <main class="page-section pt-4 pb-5">
+<main class="page-section pt-4 pb-5">
     <div class="container">
       <div class="hero-card mb-5">
         <div class="row g-0 align-items-center">
@@ -79,15 +53,15 @@
               <label for="category-filter" class="form-label text-muted text-uppercase small mb-1">Filter by section</label>
               <select id="category-filter" name="category" class="form-select">
                 <option value="">All products</option>
-                <% (categories || []).forEach(function(cat) { %>
-                  <option value="<%= cat %>" <%= activeCategory === cat ? 'selected' : '' %>><%= cat %></option>
+                <% categoryList.forEach(function(cat) { %>
+                  <option value="<%= cat %>" <%= currentCategory === cat ? 'selected' : '' %>><%= cat %></option>
                 <% }); %>
               </select>
             </div>
             <div class="col-12 col-md-6 col-lg-4">
               <button type="submit" class="btn btn-outline-primary w-100">Apply filter</button>
             </div>
-            <% if (activeCategory) { %>
+            <% if (currentCategory) { %>
               <div class="col-12 col-lg-4">
                 <a href="/shopping" class="btn btn-link text-decoration-none">Clear filter</a>
               </div>
@@ -108,12 +82,12 @@
         <% }); %>
       <% } %>
 
-      <% if (bestSellers && bestSellers.length) { %>
+      <% if (bestList.length) { %>
         <div class="mb-5">
           <span class="text-uppercase small text-muted">Best sellers</span>
           <h3 class="mt-2">Community favourites</h3>
           <div class="row g-3 mt-3">
-            <% bestSellers.forEach(function(item) { %>
+            <% bestList.forEach(function(item) { %>
               <div class="col-12 col-md-6 col-lg-4 col-xxl-3">
                 <div class="card h-100 border-0 shadow-sm">
                   <% if (item.image) { %>
@@ -165,8 +139,8 @@
       <% } %>
 
       <div class="row g-4">
-        <% if (products && products.length) { %>
-          <% products.forEach(function(product) { %>
+        <% if (productList.length) { %>
+          <% productList.forEach(function(product) { %>
             <div class="col-12 col-sm-6 col-lg-4 col-xxl-3">
               <div class="card h-100">
                 <div class="position-relative">
@@ -217,8 +191,8 @@
                     <form action="/add-to-cart/<%= product.id %>" method="POST" class="mt-auto">
                       <label for="quantity-<%= product.id %>" class="form-label small text-uppercase fw-semibold text-muted">Choose quantity</label>
                       <div class="input-group">
+                        <% const maxQty = Math.min(product.quantity, 10); %>
                         <select class="form-select" id="quantity-<%= product.id %>" name="quantity">
-                          <% const maxQty = Math.min(product.quantity, 10); %>
                           <% for (let q = 1; q <= maxQty; q++) { %>
                             <option value="<%= q %>"><%= q %></option>
                           <% } %>
@@ -246,6 +220,5 @@
       </div>
     </div>
   </main>
-</body>
-</html>
 
+<%- include('partials/footer') %>
