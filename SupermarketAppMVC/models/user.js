@@ -72,6 +72,15 @@ const updateRole = (id, role, freeDelivery, callback) => {
     db.query(sql, [role, freeDelivery ? 1 : 0, id], callback);
 };
 
+/**
+ * Count the number of admin users.
+ * @param {Function} callback - Node-style callback (err, results).
+ */
+const countAdmins = (callback) => {
+    const sql = 'SELECT COUNT(*) AS adminCount FROM users WHERE role = ?';
+    db.query(sql, ['admin'], callback);
+};
+
 module.exports = {
     create,
     findByEmail,
@@ -79,5 +88,6 @@ module.exports = {
     findAll,
     findById,
     remove,
-    updateRole
+    updateRole,
+    countAdmins
 };

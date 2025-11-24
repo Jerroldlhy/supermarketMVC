@@ -149,25 +149,64 @@ const updateUserRole = (req, res) => {
 
     const wantsFreeDelivery = freeDelivery === 'on' || freeDelivery === 'true' || freeDelivery === '1';
 
-    User.updateRole(userId, role, wantsFreeDelivery, (err, result) => {
-        if (err) {
-            console.error('Error updating user role:', err);
+    const performUpdate = () => {
+        User.updateRole(userId, role, wantsFreeDelivery, (err, result) => {
+            if (err) {
+                console.error('Error updating user role:', err);
+                req.flash('error', 'Unable to update role.');
+                return res.redirect(`/admin/users/${userId}/edit`);
+            }
+
+            if (result.affectedRows === 0) {
+                req.flash('error', 'User not found.');
+                return res.redirect('/admin/users');
+            }
+
+            req.flash('success', 'User permissions updated successfully.');
+
+            if (req.session.user && req.session.user.id === userId) {
+                req.session.user.role = role;
+                req.session.user.free_delivery = wantsFreeDelivery ? 1 : 0;
+            }
+            return res.redirect('/admin/users');
+        });
+    };
+
+    User.findById(userId, (findErr, results) => {
+        if (findErr) {
+            console.error('Error loading user before role update:', findErr);
             req.flash('error', 'Unable to update role.');
-            return res.redirect(`/admin/users/${userId}/edit`);
+            return res.redirect('/admin/users');
         }
 
-        if (result.affectedRows === 0) {
+        if (results.length === 0) {
             req.flash('error', 'User not found.');
             return res.redirect('/admin/users');
         }
 
-        req.flash('success', 'User permissions updated successfully.');
+        const managedUser = results[0];
+        const isRemovingAdminRights = managedUser.role === 'admin' && role !== 'admin';
 
-        if (req.session.user && req.session.user.id === userId) {
-            req.session.user.role = role;
-            req.session.user.free_delivery = wantsFreeDelivery ? 1 : 0;
+        if (!isRemovingAdminRights) {
+            return performUpdate();
         }
-        return res.redirect('/admin/users');
+
+        return User.countAdmins((countErr, countResults) => {
+            if (countErr) {
+                console.error('Error checking admin count before role update:', countErr);
+                req.flash('error', 'Unable to update role.');
+                return res.redirect('/admin/users');
+            }
+
+            const adminCount = countResults && countResults[0] ? countResults[0].adminCount : 0;
+
+            if (adminCount <= 1) {
+                req.flash('error', 'Cannot remove admin rights from the last remaining admin.');
+                return res.redirect('/admin/users');
+            }
+
+            return performUpdate();
+        });
     });
 };
 
@@ -198,21 +237,44 @@ const deleteUser = (req, res) => {
 
         const userToDelete = results[0];
 
-        User.remove(userId, (deleteErr, deleteResult) => {
-            if (deleteErr) {
-                console.error('Error deleting user:', deleteErr);
-                req.flash('error', 'Unable to delete user at this time.');
-                return res.redirect('/admin/users');
-            }
+        const proceedWithDelete = () => {
+            User.remove(userId, (deleteErr, deleteResult) => {
+                if (deleteErr) {
+                    console.error('Error deleting user:', deleteErr);
+                    req.flash('error', 'Unable to delete user at this time.');
+                    return res.redirect('/admin/users');
+                }
 
-            if (deleteResult.affectedRows === 0) {
-                req.flash('error', 'User could not be deleted.');
-                return res.redirect('/admin/users');
-            }
+                if (deleteResult.affectedRows === 0) {
+                    req.flash('error', 'User could not be deleted.');
+                    return res.redirect('/admin/users');
+                }
 
-            req.flash('success', `User "${userToDelete.username}" deleted successfully.`);
-            return res.redirect('/admin/users');
-        });
+                req.flash('success', `User "${userToDelete.username}" deleted successfully.`);
+                return res.redirect('/admin/users');
+            });
+        };
+
+        if (userToDelete.role === 'admin') {
+            return User.countAdmins((countErr, countResults) => {
+                if (countErr) {
+                    console.error('Error checking admin count before delete:', countErr);
+                    req.flash('error', 'Unable to delete user at this time.');
+                    return res.redirect('/admin/users');
+                }
+
+                const adminCount = countResults && countResults[0] ? countResults[0].adminCount : 0;
+
+                if (adminCount <= 1) {
+                    req.flash('error', 'Cannot delete the last remaining admin account.');
+                    return res.redirect('/admin/users');
+                }
+
+                return proceedWithDelete();
+            });
+        }
+
+        return proceedWithDelete();
     });
 };
 
