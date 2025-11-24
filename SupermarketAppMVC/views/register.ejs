@@ -7,10 +7,10 @@
       <h1 class="text-center">Create your account</h1>
       <p class="text-center text-muted mb-4">Join Supermarket App to access curated groceries, exclusive deals, and seamless checkout.</p>
 
-      <% if (messages && messages.length) { %>
+      <% if (errors && errors.length) { %>
         <div class="alert alert-danger">
-          <% messages.forEach(function(message) { %>
-            <p class="mb-1"><%= message %></p>
+          <% errors.forEach(function(error) { %>
+            <p class="mb-1"><%= error %></p>
           <% }); %>
         </div>
       <% } %>

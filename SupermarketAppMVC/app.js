@@ -90,6 +90,15 @@ app.use(session({
 
 app.use(flash());
 
+// Expose session user and flash feedback to all templates
+app.use((req, res, next) => {
+    res.locals.user = req.session.user || null;
+    res.locals.messages = req.flash('success');
+    res.locals.errors = req.flash('error');
+    res.locals.formData = req.flash('formData')[0] || null;
+    next();
+});
+
 // Routes
 app.get('/', (req, res) => {
     res.render('index', {user: req.session.user});
@@ -110,9 +119,16 @@ app.post('/admin/users/:id/delete', checkAuthenticated, checkAdmin, userControll
 
 app.get('/shopping', checkAuthenticated, checkRoles('user'), (req, res) => {
     const activeCategory = req.query.category ? String(req.query.category).trim() : '';
-    const productFetcher = activeCategory
-        ? (cb) => Product.getByCategory(activeCategory, cb)
-        : (cb) => Product.getAll(cb);
+    const searchTerm = req.query.search ? String(req.query.search).trim() : '';
+    const productFetcher = (() => {
+        if (activeCategory || searchTerm) {
+            return (cb) => Product.findByFilter({
+                category: activeCategory || undefined,
+                search: searchTerm || undefined
+            }, cb);
+        }
+        return (cb) => Product.getAll(cb);
+    })();
 
     productFetcher((error, products) => {
         if (error) {
@@ -139,9 +155,10 @@ app.get('/shopping', checkAuthenticated, checkRoles('user'), (req, res) => {
                     products: productList,
                     categories,
                     activeCategory,
+                    searchTerm,
                     bestSellers: (bestSellers && bestSellers.length) ? bestSellers.map(decorateProduct) : [],
-                    messages: req.flash('success'),
-                    errors: req.flash('error')
+                    messages: res.locals.messages,
+                    errors: res.locals.errors
                 });
             });
         });

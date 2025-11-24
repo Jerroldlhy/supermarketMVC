@@ -84,8 +84,8 @@ const ProductController = {
             res.render('inventory', {
                 products,
                 user: req.session.user,
-                messages: req.flash('success'),
-                errors: req.flash('error')
+                messages: res.locals.messages,
+                errors: res.locals.errors
             });
         });
     },
@@ -94,8 +94,8 @@ const ProductController = {
     showAddProductForm: (req, res) => {
         res.render('addProduct', {
             user: req.session.user,
-            messages: req.flash('success'),
-            errors: req.flash('error')
+            messages: res.locals.messages,
+            errors: res.locals.errors
         });
     },
 
@@ -129,8 +129,8 @@ const ProductController = {
                 res.render('updateProduct', {
                     product: enhanceProductRecord(results[0]),
                     user: req.session.user,
-                    errors: req.flash('error'),
-                    messages: req.flash('success')
+                    errors: res.locals.errors,
+                    messages: res.locals.messages
                 });
             } else {
                 res.status(404).send('Product not found');
@@ -208,8 +208,8 @@ const ProductController = {
                         reviews,
                         averageRating,
                         userReview,
-                        messages: req.flash('success'),
-                        errors: req.flash('error')
+                        messages: res.locals.messages,
+                        errors: res.locals.errors
                     });
                 });
             } else {

@@ -167,8 +167,8 @@ const history = (req, res) => {
                     orders,
                     orderItems: itemsByOrder,
                     bestSellers: (bestRows || []).map(decorateProduct),
-                    messages: req.flash('success'),
-                    errors: req.flash('error')
+                    messages: res.locals.messages,
+                    errors: res.locals.errors
                 });
             });
         });
@@ -256,8 +256,8 @@ const listAllDeliveries = (req, res) => {
                 user: req.session.user,
                 orders,
                 orderItems: itemsByOrder,
-                messages: req.flash('success'),
-                errors: req.flash('error')
+                messages: res.locals.messages,
+                errors: res.locals.errors
             });
         });
     });

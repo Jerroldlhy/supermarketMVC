@@ -2,6 +2,30 @@ const connection = require('../db');
 
 // Product model
 const Product = {
+    /**
+     * Fetch all products or apply optional filters.
+     */
+    findByFilter: (filters = {}, callback) => {
+        const { category, search } = filters;
+        const clauses = [];
+        const params = [];
+
+        if (category) {
+            clauses.push('category = ?');
+            params.push(category);
+        }
+
+        if (search) {
+            const likeTerm = `%${search}%`;
+            clauses.push('(productName LIKE ? OR category LIKE ? OR offerMessage LIKE ?)');
+            params.push(likeTerm, likeTerm, likeTerm);
+        }
+
+        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        const sql = `SELECT * FROM products ${where}`;
+        connection.query(sql, params, callback);
+    },
+
     getAll: (callback) => {
         const sql = 'SELECT * FROM products';
         connection.query(sql, callback);

@@ -2,9 +2,10 @@
 
 const showRegister = (req, res) => {
     res.render('register', {
-        messages: req.flash('error'),
-        formData: req.flash('formData')[0],
-        user: req.session.user
+        formData: res.locals.formData || {},
+        user: req.session.user,
+        errors: res.locals.errors,
+        messages: res.locals.messages
     });
 };
 
@@ -33,8 +34,8 @@ const register = (req, res) => {
 const showLogin = (req, res) => {
     res.render('login', {
         user: req.session.user,
-        messages: req.flash('success'),
-        errors: req.flash('error')
+        messages: res.locals.messages,
+        errors: res.locals.errors
     });
 };
 
@@ -106,8 +107,8 @@ const listUsers = (req, res) => {
         res.render('manageUsers', {
             users: results,
             user: req.session.user,
-            messages: req.flash('success'),
-            errors: req.flash('error')
+            messages: res.locals.messages,
+            errors: res.locals.errors
         });
     });
 };
@@ -130,8 +131,8 @@ const editUserForm = (req, res) => {
         res.render('edituser', {
             managedUser: results[0],
             user: req.session.user,
-            errors: req.flash('error'),
-            messages: req.flash('success')
+            errors: res.locals.errors,
+            messages: res.locals.messages
         });
     });
 };

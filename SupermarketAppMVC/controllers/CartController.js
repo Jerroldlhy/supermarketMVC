@@ -109,8 +109,8 @@ const viewCart = (req, res) => {
         res.render('cart', {
             cart: items,
             user: req.session.user,
-            messages: req.flash('success'),
-            errors: req.flash('error')
+            messages: res.locals.messages,
+            errors: res.locals.errors
         });
     });
 };
