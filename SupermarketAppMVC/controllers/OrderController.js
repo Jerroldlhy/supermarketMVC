@@ -1,17 +1,8 @@
 const Order = require('../models/order');
 const User = require('../models/user');
+const Cart = require('../models/cart');
 
 const DELIVERY_FEE = 1.5;
-
-const ensureCart = (req) => {
-    if (!req.session.cart) {
-        if (deliveryAddress) {
-            req.session.user.address = deliveryAddress;
-        }
-
-        req.session.cart = [];
-    }
-};
 
 const normalisePrice = (value) => {
     const parsed = Number.parseFloat(value);
@@ -75,41 +66,51 @@ const sanitiseDeliveryAddress = (address) => {
  * Handle checkout and order creation.
  */
 const checkout = (req, res) => {
-    ensureCart(req);
-
     if (!req.session.user || req.session.user.role !== 'user') {
         req.flash('error', 'Only shoppers can complete checkout.');
         return res.redirect('/cart');
     }
 
-    const cartItems = req.session.cart;
+    const userId = req.session.user.id;
 
-    if (!cartItems.length) {
-        req.flash('error', 'Your cart is empty.');
-        return res.redirect('/cart');
-    }
-
-    const deliveryMethod = req.body.deliveryMethod === 'delivery' ? 'delivery' : 'pickup';
-    const providedAddress = sanitiseDeliveryAddress(req.body.deliveryAddress) || req.session.user.address;
-    const deliveryAddress = deliveryMethod === 'delivery' ? sanitiseDeliveryAddress(providedAddress) : null;
-
-    if (deliveryMethod === 'delivery' && !deliveryAddress) {
-        req.flash('error', 'Please provide a delivery address.');
-        return res.redirect('/cart');
-    }
-
-    const deliveryFee = computeDeliveryFee(req.session.user, deliveryMethod);
-
-    Order.create(req.session.user.id, cartItems, { deliveryMethod, deliveryAddress, deliveryFee }, (error) => {
-        if (error) {
-            console.error('Error during checkout:', error);
-            req.flash('error', error.message || 'Unable to complete checkout. Please try again.');
+    Cart.getCart(userId, (cartErr, cartItems) => {
+        if (cartErr) {
+            console.error('Error loading cart for checkout:', cartErr);
+            req.flash('error', 'Unable to load your cart right now.');
             return res.redirect('/cart');
         }
 
-        req.session.cart = [];
-        req.flash('success', `Thanks for your purchase! ${deliveryMethod === 'delivery' ? 'We will deliver your order shortly.' : 'Pickup details will be shared soon.'}`);
-        return res.redirect('/orders/history');
+        if (!cartItems.length) {
+            req.flash('error', 'Your cart is empty.');
+            return res.redirect('/cart');
+        }
+
+        const deliveryMethod = req.body.deliveryMethod === 'delivery' ? 'delivery' : 'pickup';
+        const providedAddress = sanitiseDeliveryAddress(req.body.deliveryAddress) || req.session.user.address;
+        const deliveryAddress = deliveryMethod === 'delivery' ? sanitiseDeliveryAddress(providedAddress) : null;
+
+        if (deliveryMethod === 'delivery' && !deliveryAddress) {
+            req.flash('error', 'Please provide a delivery address.');
+            return res.redirect('/cart');
+        }
+
+        const deliveryFee = computeDeliveryFee(req.session.user, deliveryMethod);
+
+        Order.create(userId, cartItems, { deliveryMethod, deliveryAddress, deliveryFee }, (error) => {
+            if (error) {
+                console.error('Error during checkout:', error);
+                req.flash('error', error.message || 'Unable to complete checkout. Please try again.');
+                return res.redirect('/cart');
+            }
+
+            Cart.clearCart(userId, (clearErr) => {
+                if (clearErr) {
+                    console.error('Error clearing cart after checkout:', clearErr);
+                }
+                req.flash('success', `Thanks for your purchase! ${deliveryMethod === 'delivery' ? 'We will deliver your order shortly.' : 'Pickup details will be shared soon.'}`);
+                return res.redirect('/orders/history');
+            });
+        });
     });
 };
 
@@ -169,6 +170,53 @@ const history = (req, res) => {
                     messages: req.flash('success'),
                     errors: req.flash('error')
                 });
+            });
+        });
+    });
+};
+
+const printOrder = (req, res) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+
+    const orderId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(orderId)) {
+        req.flash('error', 'Invalid order selected.');
+        return res.redirect('/orders/history');
+    }
+
+    Order.findById(orderId, (orderErr, orderRows) => {
+        if (orderErr || !orderRows || !orderRows.length) {
+            req.flash('error', 'Order not found.');
+            return res.redirect('/orders/history');
+        }
+
+        const order = orderRows[0];
+        const sessionUser = req.session.user;
+        const isOwner = sessionUser && sessionUser.id === order.user_id;
+        const isAdmin = sessionUser && sessionUser.role === 'admin';
+
+        if (!isOwner && !isAdmin) {
+            req.flash('error', 'You are not authorised to view this receipt.');
+            return res.redirect('/orders/history');
+        }
+
+        Order.findItemsByOrderIds([orderId], (itemsErr, itemRows) => {
+            if (itemsErr) {
+                req.flash('error', 'Unable to load order items.');
+                return res.redirect('/orders/history');
+            }
+
+            res.render('orderReceipt', {
+                user: req.session.user,
+                order: {
+                    ...order,
+                    delivery_method: order.delivery_method || 'pickup',
+                    delivery_address: order.delivery_address,
+                    delivery_fee: Number(order.delivery_fee || 0)
+                },
+                items: itemRows || []
             });
         });
     });
@@ -239,8 +287,9 @@ const updateDeliveryDetails = (req, res) => {
         const isAdmin = sessionUser && sessionUser.role === 'admin';
         const isOwner = sessionUser && sessionUser.id === order.user_id;
 
-        if (!isAdmin && !isOwner) {
-            req.flash('error', 'You are not authorised to update this delivery.');
+        // Only admins can update delivery details; shoppers can only view
+        if (!isAdmin) {
+            req.flash('error', 'Only administrators can update delivery details.');
             return res.redirect('/orders/history');
         }
 
@@ -274,10 +323,6 @@ const updateDeliveryDetails = (req, res) => {
                     return res.redirect(redirectPath);
                 }
 
-                if (!isAdmin && sessionUser && deliveryMethod === 'delivery') {
-                    sessionUser.address = requestedAddress;
-                }
-
                 req.flash('success', 'Delivery details updated.');
                 return res.redirect(redirectPath);
             });
@@ -288,6 +333,7 @@ const updateDeliveryDetails = (req, res) => {
 module.exports = {
     checkout,
     history,
+    printOrder,
     listAllDeliveries,
     updateDeliveryDetails
 };

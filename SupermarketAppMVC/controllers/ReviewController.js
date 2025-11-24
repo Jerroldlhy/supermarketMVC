@@ -1,4 +1,5 @@
 const Review = require('../models/review');
+const Order = require('../models/order');
 
 /**
  * Create or update a review for a product by the logged-in user.
@@ -20,35 +21,48 @@ const upsert = (req, res) => {
         return res.redirect(`/product/${productId}`);
     }
 
-    Review.findByUserAndProduct(user.id, productId, (lookupError, existingRows) => {
-        if (lookupError) {
-            console.error('Error looking up review:', lookupError);
-            req.flash('error', 'Unable to submit review at this time.');
+    Order.userHasPurchasedProduct(user.id, productId, (purchaseErr, hasBought) => {
+        if (purchaseErr) {
+            console.error('Error checking purchase history for review:', purchaseErr);
+            req.flash('error', 'Unable to verify your purchase right now.');
             return res.redirect(`/product/${productId}`);
         }
 
-        if (existingRows && existingRows.length) {
-            const reviewId = existingRows[0].id;
-            Review.update(reviewId, { rating, comment }, (updateError) => {
-                if (updateError) {
-                    console.error('Error updating review:', updateError);
-                    req.flash('error', 'Unable to update review.');
-                } else {
-                    req.flash('success', 'Your review has been updated.');
-                }
-                return res.redirect(`/product/${productId}`);
-            });
-        } else {
-            Review.create({ productId, userId: user.id, rating, comment }, (createError) => {
-                if (createError) {
-                    console.error('Error creating review:', createError);
-                    req.flash('error', 'Unable to submit review.');
-                } else {
-                    req.flash('success', 'Thanks for sharing your thoughts!');
-                }
-                return res.redirect(`/product/${productId}`);
-            });
+        if (!hasBought) {
+            req.flash('error', 'You can only review items you have purchased.');
+            return res.redirect(`/product/${productId}`);
         }
+
+        Review.findByUserAndProduct(user.id, productId, (lookupError, existingRows) => {
+            if (lookupError) {
+                console.error('Error looking up review:', lookupError);
+                req.flash('error', 'Unable to submit review at this time.');
+                return res.redirect(`/product/${productId}`);
+            }
+
+            if (existingRows && existingRows.length) {
+                const reviewId = existingRows[0].id;
+                Review.update(reviewId, { rating, comment }, (updateError) => {
+                    if (updateError) {
+                        console.error('Error updating review:', updateError);
+                        req.flash('error', 'Unable to update review.');
+                    } else {
+                        req.flash('success', 'Your review has been updated.');
+                    }
+                    return res.redirect(`/product/${productId}`);
+                });
+            } else {
+                Review.create({ productId, userId: user.id, rating, comment }, (createError) => {
+                    if (createError) {
+                        console.error('Error creating review:', createError);
+                        req.flash('error', 'Unable to submit review.');
+                    } else {
+                        req.flash('success', 'Thanks for sharing your thoughts!');
+                    }
+                    return res.redirect(`/product/${productId}`);
+                });
+            }
+        });
     });
 };
 
@@ -98,4 +112,3 @@ module.exports = {
     upsert,
     remove
 };
-

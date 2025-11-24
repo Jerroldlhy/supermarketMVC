@@ -61,13 +61,31 @@ const login = (req, res) => {
         const user = results[0];
         // Remove hashed password before storing user in session
         delete user.password;
-        req.session.user = user;
-        req.flash('success', 'Login successful!');
 
-        if (user.role === 'admin') {
-            return res.redirect('/inventory');
-        }
-        return res.redirect('/shopping');
+        // Regenerate session to avoid fixation and ensure it is persisted before redirect
+        return req.session.regenerate((regenErr) => {
+            if (regenErr) {
+                console.error('Error regenerating session on login:', regenErr);
+                req.flash('error', 'Unable to log in right now. Please try again.');
+                return res.redirect('/login');
+            }
+
+            req.session.user = user;
+            req.flash('success', 'Login successful!');
+
+            req.session.save((saveErr) => {
+                if (saveErr) {
+                    console.error('Error saving session on login:', saveErr);
+                    req.flash('error', 'Unable to log in right now. Please try again.');
+                    return res.redirect('/login');
+                }
+
+                if (user.role === 'admin') {
+                    return res.redirect('/inventory');
+                }
+                return res.redirect('/shopping');
+            });
+        });
     });
 };
 

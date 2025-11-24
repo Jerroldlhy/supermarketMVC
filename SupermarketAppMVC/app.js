@@ -1,7 +1,9 @@
 const express = require('express');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const flash = require('connect-flash');
 const multer = require('multer');
+require('dotenv').config();
 const app = express();
 
 const userController = require('./controllers/UserController');
@@ -68,12 +70,22 @@ app.use(express.urlencoded({
     extended: false
 }));
 
-// Session Middleware
+// Session Middleware stored in MySQL so sessions persist across browsers/devices
+const sessionStore = new MySQLStore({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 3306,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    createDatabaseTable: true
+});
+
 app.use(session({
-    secret: 'secret',
+    secret: process.env.SESSION_SECRET || 'secret',
+    store: sessionStore,
     resave: false,
-    saveUninitialized: true,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 } 
+    saveUninitialized: false,
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
 }));
 
 app.use(flash());
@@ -142,6 +154,7 @@ app.post('/cart/update/:id', checkAuthenticated, checkRoles('user'), cartControl
 app.post('/cart/remove/:id', checkAuthenticated, checkRoles('user'), cartController.removeCartItem);
 app.post('/checkout', checkAuthenticated, checkRoles('user'), orderController.checkout);
 app.get('/orders/history', checkAuthenticated, checkRoles('user'), orderController.history);
+app.get('/orders/:id/print', checkAuthenticated, orderController.printOrder);
 app.post('/orders/:id/delivery', checkAuthenticated, orderController.updateDeliveryDetails);
 
 app.get('/logout', userController.logout);

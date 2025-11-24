@@ -8,7 +8,10 @@
           <p class="mb-1 text-muted">Your account</p>
           <h2 class="mb-0">Purchase history</h2>
         </div>
-        <a href="/shopping" class="btn btn-primary">Continue shopping</a>
+        <div class="d-flex gap-2">
+
+          <a href="/shopping" class="btn btn-primary">Continue shopping</a>
+        </div>
       </div>
 
       <% if (messages && messages.length) { %>
@@ -104,28 +107,37 @@
                         <p class="text-muted mb-3">We will notify you when your pickup is ready.</p>
                       <% } %>
 
-                      <form action="/orders/<%= order.id %>/delivery" method="POST" class="row gy-3">
-                        <div class="col-12 col-md-4">
-                          <label class="form-label">Update method</label>
-                          <select name="deliveryMethod" class="form-select">
-                            <option value="pickup" <%= order.delivery_method === 'pickup' ? 'selected' : '' %>>Pickup</option>
-                            <option value="delivery" <%= order.delivery_method === 'delivery' ? 'selected' : '' %>>Delivery</option>
-                          </select>
+                      <% if (user && user.role === 'admin') { %>
+                        <form action="/orders/<%= order.id %>/delivery" method="POST" class="row gy-3">
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Update method</label>
+                            <select name="deliveryMethod" class="form-select">
+                              <option value="pickup" <%= order.delivery_method === 'pickup' ? 'selected' : '' %>>Pickup</option>
+                              <option value="delivery" <%= order.delivery_method === 'delivery' ? 'selected' : '' %>>Delivery</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-8">
+                            <label for="order-address-<%= order.id %>" class="form-label">Delivery address</label>
+                            <textarea
+                              id="order-address-<%= order.id %>"
+                              name="deliveryAddress"
+                              rows="2"
+                              class="form-control"
+                              placeholder="Provide address for delivery"><%= order.delivery_address || user.address || '' %></textarea>
+                            <small class="text-muted">Required if delivery is selected. Pickup orders can leave this blank.</small>
+                          </div>
+                          <div class="col-12 d-flex justify-content-end">
+                            <div class="d-flex gap-2">
+                              <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary btn-sm">Print this order</a>
+                              <button type="submit" class="btn btn-outline-primary btn-sm">Save delivery changes</button>
+                            </div>
+                          </div>
+                        </form>
+                      <% } else { %>
+                        <div class="d-flex justify-content-end">
+                          <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary btn-sm">Print this order</a>
                         </div>
-                        <div class="col-12 col-md-8">
-                          <label for="order-address-<%= order.id %>" class="form-label">Delivery address</label>
-                          <textarea
-                            id="order-address-<%= order.id %>"
-                            name="deliveryAddress"
-                            rows="2"
-                            class="form-control"
-                            placeholder="Provide address for delivery"><%= order.delivery_address || user.address || '' %></textarea>
-                          <small class="text-muted">Required if delivery is selected. Pickup orders can leave this blank.</small>
-                        </div>
-                        <div class="col-12 d-flex justify-content-end">
-                          <button type="submit" class="btn btn-outline-primary btn-sm">Save delivery changes</button>
-                        </div>
-                      </form>
+                      <% } %>
                     </div>
                   </div>
                 </div>
@@ -176,7 +188,38 @@
     </div>
   </main>
 
-  
+<% const orderHistoryScripts = `
+  <script>
+    (() => {
+      const printButton = document.getElementById('print-orders-btn');
+      if (!printButton) return;
 
-<%- include('partials/footer') %>
+      const openAll = () => {
+        const sections = document.querySelectorAll('#order-history .accordion-collapse');
+        sections.forEach(section => {
+          section.dataset.wasOpen = section.classList.contains('show') ? '1' : '0';
+          section.classList.add('show');
+        });
+      };
 
+      const restore = () => {
+        const sections = document.querySelectorAll('#order-history .accordion-collapse');
+        sections.forEach(section => {
+          if (section.dataset.wasOpen === '0') {
+            section.classList.remove('show');
+          }
+          delete section.dataset.wasOpen;
+        });
+      };
+
+      window.addEventListener('afterprint', restore);
+
+      printButton.addEventListener('click', () => {
+        openAll();
+        window.print();
+      });
+    })();
+  </script>
+`; %>
+
+<%- include('partials/footer', { extraScripts: orderHistoryScripts }) %>

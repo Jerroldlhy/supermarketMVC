@@ -185,6 +185,22 @@ const findItemsByOrderIds = (orderIds, callback) => {
     connection.query(sql, [orderIds], callback);
 };
 
+const userHasPurchasedProduct = (userId, productId, callback) => {
+    const sql = `
+        SELECT 1
+        FROM orders o
+        JOIN order_items oi ON oi.order_id = o.id
+        WHERE o.user_id = ? AND oi.product_id = ?
+        LIMIT 1
+    `;
+    connection.query(sql, [userId, productId], (err, rows) => {
+        if (err) {
+            return callback(err);
+        }
+        return callback(null, rows && rows.length > 0);
+    });
+};
+
 /**
  * Retrieve global best-selling products ordered by total quantity sold.
  * @param {number} limit Number of products to fetch
@@ -235,5 +251,6 @@ module.exports = {
     findAllWithUsers,
     findItemsByOrderIds,
     getBestSellers,
-    updateDelivery
+    updateDelivery,
+    userHasPurchasedProduct
 };

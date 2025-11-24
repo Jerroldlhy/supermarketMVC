@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order #<%= order.id %> Receipt | Supermarket App</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    body { background: #f8f9fa; }
+    .receipt { max-width: 900px; margin: 24px auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); padding: 32px; }
+    .brand { font-weight: 700; font-size: 1.25rem; }
+    .badge-muted { background: #eef2f7; color: #334155; }
+    .totals-row { font-weight: 600; }
+    @media print {
+      #print-actions { display: none; }
+      body { background: #fff; }
+      .receipt { box-shadow: none; border: none; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+      <div>
+        <div class="brand">Supermarket App</div>
+        <small class="text-muted">Order receipt</small>
+      </div>
+      <div class="text-end">
+        <div class="fw-semibold">Order #<%= order.id %></div>
+        <div class="text-muted"><%= new Date(order.created_at).toLocaleString() %></div>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-md-6">
+        <div class="border rounded p-3">
+          <div class="fw-semibold mb-1">Billed to</div>
+          <div><%= user.username %></div>
+          <div class="text-muted small"><%= user.email %></div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="border rounded p-3">
+          <div class="fw-semibold mb-1">Fulfilment</div>
+          <span class="badge <%= order.delivery_method === 'delivery' ? 'bg-primary' : 'badge-muted' %> text-uppercase">
+            <%= order.delivery_method === 'delivery' ? 'Delivery' : 'Pickup' %>
+          </span>
+          <% if (order.delivery_method === 'delivery') { %>
+            <div class="mt-2">
+              <div class="small text-muted">Address</div>
+              <div><%= order.delivery_address || 'Not provided' %></div>
+            </div>
+          <% } else { %>
+            <div class="mt-2 text-muted small">We will notify you when your pickup is ready.</div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive mb-4">
+      <table class="table align-middle">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="text-center">Qty</th>
+            <th class="text-end">Unit price</th>
+            <th class="text-end">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% let subtotal = 0; %>
+          <% items.forEach(function(item) { %>
+            <% const line = Number(item.price) * Number(item.quantity); subtotal += line; %>
+            <tr>
+              <td><%= item.productName %></td>
+              <td class="text-center"><%= item.quantity %></td>
+              <td class="text-end">$<%= Number(item.price).toFixed(2) %></td>
+              <td class="text-end">$<%= line.toFixed(2) %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+        <tfoot>
+          <tr class="totals-row">
+            <td colspan="3" class="text-end">Subtotal</td>
+            <td class="text-end">$<%= subtotal.toFixed(2) %></td>
+          </tr>
+          <tr>
+            <td colspan="3" class="text-end">Delivery fee</td>
+            <td class="text-end">$<%= Number(order.delivery_fee || 0).toFixed(2) %></td>
+          </tr>
+          <tr class="totals-row">
+            <td colspan="3" class="text-end">Total</td>
+            <td class="text-end">$<%= Number(order.total).toFixed(2) %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="text-muted small mb-4">
+      This receipt is generated for your records. Thank you for shopping with us.
+    </div>
+
+    <div id="print-actions" class="d-flex gap-2">
+      <button class="btn btn-primary" onclick="window.print()">Print receipt</button>
+      <a href="/orders/history" class="btn btn-outline-secondary">Back to history</a>
+    </div>
+  </div>
+</body>
+</html>

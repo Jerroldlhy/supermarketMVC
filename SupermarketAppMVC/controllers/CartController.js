@@ -1,13 +1,5 @@
 const db = require('../db');
-
-const ensureCart = (req) => {
-    if (!req.session.cart) {
-        req.session.cart = [];
-    }
-};
-
-const findCartItem = (cart, productId) =>
-    cart.find(item => item.productId === productId);
+const Cart = require('../models/cart');
 
 const ensureShopperRole = (req, res) => {
     const shopperRoles = ['user'];
@@ -43,6 +35,7 @@ const addToCart = (req, res) => {
         return;
     }
 
+    const userId = req.session.user.id;
     const productId = parseInt(req.params.id, 10);
     const quantity = parseInt(req.body.quantity, 10) || 1;
 
@@ -63,35 +56,41 @@ const addToCart = (req, res) => {
             return res.redirect('/shopping');
         }
 
-        ensureCart(req);
         const product = results[0];
-        const existingItem = findCartItem(req.session.cart, productId);
-        const pricing = calculatePricing(product);
-        const offerMessage = product.offerMessage ? String(product.offerMessage).trim() : null;
-
-        if (existingItem) {
-            existingItem.quantity += quantity;
-            existingItem.price = pricing.finalPrice;
-            existingItem.originalPrice = pricing.basePrice;
-            existingItem.discountPercentage = pricing.discountPercentage;
-            existingItem.offerMessage = offerMessage;
-            existingItem.hasDiscount = pricing.hasDiscount;
-        } else {
-            req.session.cart.push({
-                productId: product.id,
-                productName: product.productName,
-                price: pricing.finalPrice,
-                originalPrice: pricing.basePrice,
-                discountPercentage: pricing.discountPercentage,
-                offerMessage,
-                hasDiscount: pricing.hasDiscount,
-                quantity: quantity,
-                image: product.image
-            });
+        const available = Number(product.quantity) || 0;
+        if (available <= 0) {
+            req.flash('error', 'Sorry, this item is out of stock.');
+            return res.redirect('/shopping');
         }
 
-        req.flash('success', 'Item added to cart.');
-        return res.redirect('/cart');
+        const fetchCartSql = 'SELECT quantity FROM cart WHERE user_id = ? AND product_id = ? LIMIT 1';
+        db.query(fetchCartSql, [userId, productId], (cartErr, cartRows) => {
+            if (cartErr) {
+                console.error('Error checking cart quantity:', cartErr);
+                req.flash('error', 'Unable to add product to cart at this time.');
+                return res.redirect('/shopping');
+            }
+
+            const existingQty = cartRows.length ? (Number(cartRows[0].quantity) || 0) : 0;
+            const desiredQty = existingQty + quantity;
+
+            if (desiredQty > available) {
+                req.flash('error', `Only ${available} in stock. You already have ${existingQty} in your cart.`);
+                return res.redirect('/shopping');
+            }
+
+            const pricing = calculatePricing(product);
+            Cart.addOrIncrement(userId, productId, quantity, (saveErr) => {
+                if (saveErr) {
+                    console.error('Error saving cart:', saveErr);
+                    req.flash('error', 'Unable to add product to cart at this time.');
+                    return res.redirect('/shopping');
+                }
+
+                req.flash('success', `${product.productName} added to cart at $${pricing.finalPrice.toFixed(2)}${pricing.hasDiscount ? ' (discounted)' : ''}.`);
+                return res.redirect('/cart');
+            });
+        });
     });
 };
 
@@ -100,12 +99,19 @@ const viewCart = (req, res) => {
         return;
     }
 
-    ensureCart(req);
-    res.render('cart', {
-        cart: req.session.cart,
-        user: req.session.user,
-        messages: req.flash('success'),
-        errors: req.flash('error')
+    Cart.getCart(req.session.user.id, (err, items) => {
+        if (err) {
+            console.error('Error loading cart:', err);
+            req.flash('error', 'Unable to load your cart right now.');
+            return res.redirect('/shopping');
+        }
+
+        res.render('cart', {
+            cart: items,
+            user: req.session.user,
+            messages: req.flash('success'),
+            errors: req.flash('error')
+        });
     });
 };
 
@@ -114,31 +120,63 @@ const updateCartItem = (req, res) => {
         return;
     }
 
+    const userId = req.session.user.id;
     const productId = parseInt(req.params.id, 10);
     const quantity = parseInt(req.body.quantity, 10);
-
-    ensureCart(req);
 
     if (Number.isNaN(productId)) {
         req.flash('error', 'Invalid product.');
         return res.redirect('/cart');
     }
 
-    const item = findCartItem(req.session.cart, productId);
-    if (!item) {
-        req.flash('error', 'Item not found in cart.');
-        return res.redirect('/cart');
-    }
-
+    // Treat non-positive quantities as removal without stock check
     if (!Number.isFinite(quantity) || quantity <= 0) {
-        req.session.cart = req.session.cart.filter(cartItem => cartItem.productId !== productId);
-        req.flash('success', 'Item removed from cart.');
-    } else {
-        item.quantity = quantity;
-        req.flash('success', 'Cart updated successfully.');
+        return Cart.updateQuantity(userId, productId, quantity, (err) => {
+            if (err) {
+                console.error('Error updating cart item:', err);
+                req.flash('error', 'Unable to update cart.');
+            } else {
+                req.flash('success', 'Item removed from cart.');
+            }
+            return res.redirect('/cart');
+        });
     }
 
-    return res.redirect('/cart');
+    db.query('SELECT productName, quantity FROM products WHERE id = ?', [productId], (prodErr, prodRows) => {
+        if (prodErr) {
+            console.error('Error fetching product for update:', prodErr);
+            req.flash('error', 'Unable to update cart right now.');
+            return res.redirect('/cart');
+        }
+
+        if (!prodRows.length) {
+            req.flash('error', 'Product not found.');
+            return res.redirect('/cart');
+        }
+
+        const product = prodRows[0];
+        const available = Number(product.quantity) || 0;
+
+        if (available <= 0) {
+            req.flash('error', 'Sorry, this item is out of stock.');
+            return res.redirect('/cart');
+        }
+
+        if (quantity > available) {
+            req.flash('error', `Only ${available} available for ${product.productName}.`);
+            return res.redirect('/cart');
+        }
+
+        Cart.updateQuantity(userId, productId, quantity, (err) => {
+            if (err) {
+                console.error('Error updating cart item:', err);
+                req.flash('error', 'Unable to update cart.');
+            } else {
+                req.flash('success', 'Cart updated successfully.');
+            }
+            return res.redirect('/cart');
+        });
+    });
 };
 
 const removeCartItem = (req, res) => {
@@ -146,25 +184,26 @@ const removeCartItem = (req, res) => {
         return;
     }
 
+    const userId = req.session.user.id;
     const productId = parseInt(req.params.id, 10);
-
-    ensureCart(req);
 
     if (Number.isNaN(productId)) {
         req.flash('error', 'Invalid product.');
         return res.redirect('/cart');
     }
 
-    const originalLength = req.session.cart.length;
-    req.session.cart = req.session.cart.filter(cartItem => cartItem.productId !== productId);
+    Cart.removeItem(userId, productId, (err, result) => {
+        if (err) {
+            console.error('Error removing cart item:', err);
+            req.flash('error', 'Unable to remove item right now.');
+        } else if (result.affectedRows === 0) {
+            req.flash('error', 'Item not found in cart.');
+        } else {
+            req.flash('success', 'Item removed from cart.');
+        }
 
-    if (req.session.cart.length === originalLength) {
-        req.flash('error', 'Item not found in cart.');
-    } else {
-        req.flash('success', 'Item removed from cart.');
-    }
-
-    return res.redirect('/cart');
+        return res.redirect('/cart');
+    });
 };
 
 module.exports = {

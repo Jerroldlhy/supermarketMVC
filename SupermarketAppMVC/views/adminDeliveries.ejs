@@ -8,20 +8,11 @@
         <p class="mb-1 text-muted">Administrator dashboard</p>
         <h2 class="mb-0">Delivery overview</h2>
       </div>
-      <span class="badge bg-light text-dark px-3 py-2">Open orders: <strong><%= orders ? orders.length : 0 %></strong></span>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" id="print-delivery-summary" class="btn btn-outline-secondary btn-sm">Print summary</button>
+        <span class="badge bg-light text-dark px-3 py-2 align-self-center">Open orders: <strong><%= orders ? orders.length : 0 %></strong></span>
+      </div>
     </div>
-
-    <% if (messages && messages.length) { %>
-      <% messages.forEach(function(message) { %>
-        <div class="alert alert-success"><%= message %></div>
-      <% }); %>
-    <% } %>
-
-    <% if (errors && errors.length) { %>
-      <% errors.forEach(function(error) { %>
-        <div class="alert alert-danger"><%= error %></div>
-      <% }); %>
-    <% } %>
 
     <% if (!orders || !orders.length) { %>
       <div class="empty-state">
@@ -126,8 +117,9 @@
                             <small class="text-muted">
                               Current fee: <%= Number(order.delivery_fee || 0) > 0 ? '$' + Number(order.delivery_fee).toFixed(2) : 'Free' %>
                             </small>
-                          </div>
-                          <div class="col-12 d-flex justify-content-end gap-2">
+                        </div>
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary">Print this order</a>
                             <button type="submit" class="btn btn-outline-primary">Save changes</button>
                           </div>
                         </form>
@@ -144,4 +136,38 @@
   </div>
 </section>
 
-<%- include('partials/footer') %>
+<% const adminDeliveryScripts = `
+  <script>
+    (() => {
+      const printBtn = document.getElementById('print-delivery-summary');
+      if (!printBtn) return;
+
+      const openAll = () => {
+        const panels = document.querySelectorAll('#admin-deliveries .accordion-collapse');
+        panels.forEach((panel) => {
+          panel.dataset.wasOpen = panel.classList.contains('show') ? '1' : '0';
+          panel.classList.add('show');
+        });
+      };
+
+      const restore = () => {
+        const panels = document.querySelectorAll('#admin-deliveries .accordion-collapse');
+        panels.forEach((panel) => {
+          if (panel.dataset.wasOpen === '0') {
+            panel.classList.remove('show');
+          }
+          delete panel.dataset.wasOpen;
+        });
+      };
+
+      window.addEventListener('afterprint', restore);
+
+      printBtn.addEventListener('click', () => {
+        openAll();
+        window.print();
+      });
+    })();
+  </script>
+`; %>
+
+<%- include('partials/footer', { extraScripts: adminDeliveryScripts }) %>
