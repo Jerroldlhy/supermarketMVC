@@ -150,7 +150,16 @@ const history = (req, res) => {
                 return acc;
             }, {});
 
-            (itemRows || []).forEach((item) => {
+            const normalisedItems = (itemRows || []).map((item) => {
+                const isDeleted = item.is_deleted === 1 || /^Deleted product /.test(item.productName || '');
+                return {
+                    ...item,
+                    isDeleted,
+                    image: isDeleted ? null : item.image
+                };
+            });
+
+            normalisedItems.forEach((item) => {
                 if (!itemsByOrder[item.order_id]) {
                     itemsByOrder[item.order_id] = [];
                 }
@@ -208,6 +217,15 @@ const printOrder = (req, res) => {
                 return res.redirect('/orders/history');
             }
 
+            const normalisedItems = (itemRows || []).map((item) => {
+                const isDeleted = item.is_deleted === 1 || /^Deleted product /.test(item.productName || '');
+                return {
+                    ...item,
+                    isDeleted,
+                    image: isDeleted ? null : item.image
+                };
+            });
+
             res.render('orderReceipt', {
                 user: req.session.user,
                 order: {
@@ -216,7 +234,7 @@ const printOrder = (req, res) => {
                     delivery_address: order.delivery_address,
                     delivery_fee: Number(order.delivery_fee || 0)
                 },
-                items: itemRows || []
+                items: normalisedItems
             });
         });
     });

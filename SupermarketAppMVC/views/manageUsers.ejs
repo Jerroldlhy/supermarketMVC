@@ -32,6 +32,7 @@
               <th scope="col">Email</th>
               <th scope="col">Role</th>
               <th scope="col">Free Delivery</th>
+              <th scope="col">Status</th>
               <th scope="col">Contact</th>
               <th scope="col">Address</th>
               <th scope="col" class="text-center">Actions</th>
@@ -52,14 +53,21 @@
                       <span class="badge bg-light text-muted">Disabled</span>
                     <% } %>
                   </td>
+                  <td>
+                    <% if (u.is_disabled) { %>
+                      <span class="badge bg-danger-subtle text-danger">Disabled</span>
+                    <% } else { %>
+                      <span class="badge bg-success-subtle text-success">Active</span>
+                    <% } %>
+                  </td>
                   <td><%= u.contact || '-' %></td>
                   <td><%= u.address || '-' %></td>
                   <td class="text-center">
                     <div class="d-flex justify-content-center gap-2">
                       <a class="btn btn-outline-primary btn-sm" href="/admin/users/<%= u.id %>/edit">Edit role</a>
-                      <form action="/admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm(<%- JSON.stringify('Delete ' + u.username + '? This action cannot be undone.') %>);">
-                        <button type="submit" class="btn btn-outline-danger btn-sm" <%= user && user.id === u.id ? 'disabled title=\"You cannot delete your own account.\"' : 'title=\"Delete this user\"' %>>
-                          Delete
+                      <form action="/admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm(<%- JSON.stringify((u.is_disabled ? 'Enable ' : 'Disable ') + u.username + '?') %>);">
+                        <button type="submit" class="btn btn-outline-<%= u.is_disabled ? 'success' : 'danger' %> btn-sm" <%= user && user.id === u.id ? 'disabled title=\"You cannot disable your own account.\"' : '' %>>
+                          <%= u.is_disabled ? 'Enable' : 'Disable' %>
                         </button>
                       </form>
                     </div>

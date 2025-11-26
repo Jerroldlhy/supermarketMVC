@@ -66,7 +66,12 @@
                                     <img src="/images/<%= item.image %>" alt="<%= item.productName %>" width="50" height="50" class="rounded">
                                   <% } %>
                                   <div>
-                                    <a href="/product/<%= item.product_id %>" class="text-decoration-none"><%= item.productName %></a>
+                                    <% if (item.isDeleted) { %>
+                                      <div class="text-muted"><%= item.productName %></div>
+                                      <span class="badge bg-light text-dark">Product removed</span>
+                                    <% } else { %>
+                                      <a href="/product/<%= item.product_id %>" class="text-decoration-none"><%= item.productName %></a>
+                                    <% } %>
                                   </div>
                                 </div>
                               </td>

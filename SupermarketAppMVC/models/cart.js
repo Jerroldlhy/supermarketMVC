@@ -63,7 +63,7 @@ const getCart = (userId, callback) => {
             p.image,
             p.quantity AS stockAvailable
         FROM cart c
-        JOIN products p ON p.id = c.product_id
+        JOIN products p ON p.id = c.product_id AND p.is_deleted = 0
         WHERE c.user_id = ?
         ORDER BY p.productName ASC
     `;

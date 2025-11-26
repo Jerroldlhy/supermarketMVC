@@ -7,7 +7,10 @@ const db = require('../db');
  */
 const create = (userData, callback) => {
     const { username, email, password, address, contact, role, freeDelivery = 0 } = userData;
-    const sql = 'INSERT INTO users (username, email, password, address, contact, role, free_delivery) VALUES (?, ?, SHA1(?), ?, ?, ?, ?)';
+    const sql = `
+        INSERT INTO users (username, email, password, address, contact, role, free_delivery, is_disabled)
+        VALUES (?, ?, SHA1(?), ?, ?, ?, ?, 0)
+    `;
     db.query(sql, [username, email, password, address, contact, role, freeDelivery ? 1 : 0], callback);
 };
 
@@ -17,7 +20,7 @@ const create = (userData, callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findByEmail = (email, callback) => {
-    const sql = 'SELECT * FROM users WHERE email = ?';
+    const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
     db.query(sql, [email], callback);
 };
 
@@ -28,7 +31,7 @@ const findByEmail = (email, callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findByEmailAndPassword = (email, password, callback) => {
-    const sql = 'SELECT * FROM users WHERE email = ? AND password = SHA1(?)';
+    const sql = 'SELECT * FROM users WHERE email = ? AND password = SHA1(?) AND is_disabled = 0';
     db.query(sql, [email, password], callback);
 };
 
@@ -37,7 +40,7 @@ const findByEmailAndPassword = (email, password, callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findAll = (callback) => {
-    const sql = 'SELECT id, username, email, role, contact, address, free_delivery FROM users';
+    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled FROM users';
     db.query(sql, callback);
 };
 
@@ -47,7 +50,7 @@ const findAll = (callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findById = (id, callback) => {
-    const sql = 'SELECT id, username, email, role, contact, address, free_delivery FROM users WHERE id = ?';
+    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled FROM users WHERE id = ?';
     db.query(sql, [id], callback);
 };
 
@@ -81,6 +84,17 @@ const countAdmins = (callback) => {
     db.query(sql, ['admin'], callback);
 };
 
+/**
+ * Enable or disable a user account without deleting history.
+ * @param {number} id
+ * @param {boolean} disabled
+ * @param {Function} callback
+ */
+const setDisabled = (id, disabled, callback) => {
+    const sql = 'UPDATE users SET is_disabled = ? WHERE id = ?';
+    db.query(sql, [disabled ? 1 : 0, id], callback);
+};
+
 module.exports = {
     create,
     findByEmail,
@@ -89,5 +103,6 @@ module.exports = {
     findById,
     remove,
     updateRole,
-    countAdmins
+    countAdmins,
+    setDisabled
 };

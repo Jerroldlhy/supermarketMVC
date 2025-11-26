@@ -7,7 +7,7 @@ const Product = {
      */
     findByFilter: (filters = {}, callback) => {
         const { category, search } = filters;
-        const clauses = [];
+        const clauses = ['is_deleted = 0'];
         const params = [];
 
         if (category) {
@@ -27,22 +27,22 @@ const Product = {
     },
 
     getAll: (callback) => {
-        const sql = 'SELECT * FROM products';
+        const sql = 'SELECT * FROM products WHERE is_deleted = 0';
         connection.query(sql, callback);
     },
 
     getByCategory: (category, callback) => {
-        const sql = 'SELECT * FROM products WHERE category = ?';
+        const sql = 'SELECT * FROM products WHERE category = ? AND is_deleted = 0';
         connection.query(sql, [category], callback);
     },
 
     getCategories: (callback) => {
-        const sql = 'SELECT DISTINCT category FROM products ORDER BY category ASC';
+        const sql = 'SELECT DISTINCT category FROM products WHERE is_deleted = 0 ORDER BY category ASC';
         connection.query(sql, callback);
     },
 
     getById: (productId, callback) => {
-        const sql = 'SELECT * FROM products WHERE id = ?';
+        const sql = 'SELECT * FROM products WHERE id = ? AND is_deleted = 0';
         connection.query(sql, [productId], callback);
     },
 
@@ -83,7 +83,7 @@ const Product = {
     },
 
     delete: (productId, callback) => {
-        const sql = 'DELETE FROM products WHERE id = ?';
+        const sql = 'UPDATE products SET is_deleted = 1 WHERE id = ?';
         connection.query(sql, [productId], callback);
     }
 };

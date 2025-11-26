@@ -60,7 +60,7 @@ const create = (userId, cartItems, options, callback) => {
                     return reject(new Error(`Invalid quantity detected for ${item.productName}.`));
                 }
 
-                const productSql = 'SELECT quantity FROM products WHERE id = ? FOR UPDATE';
+                const productSql = 'SELECT quantity FROM products WHERE id = ? AND is_deleted = 0 FOR UPDATE';
                 connection.query(productSql, [item.productId], (productError, productRows) => {
                     if (productError) {
                         return reject(productError);
@@ -176,11 +176,20 @@ const findItemsByOrderIds = (orderIds, callback) => {
     }
 
     const sql = `
-        SELECT oi.order_id, oi.product_id, oi.quantity, oi.price, p.productName, p.image, p.discountPercentage, p.offerMessage
+        SELECT
+            oi.order_id,
+            oi.product_id,
+            oi.quantity,
+            oi.price,
+            COALESCE(p.productName, CONCAT('Deleted product #', oi.product_id)) AS productName,
+            p.image,
+            p.discountPercentage,
+            p.offerMessage,
+            p.is_deleted
         FROM order_items oi
-        JOIN products p ON p.id = oi.product_id
+        LEFT JOIN products p ON p.id = oi.product_id
         WHERE oi.order_id IN (?)
-        ORDER BY oi.order_id DESC, p.productName ASC
+        ORDER BY oi.order_id DESC, productName ASC
     `;
     connection.query(sql, [orderIds], callback);
 };
@@ -219,6 +228,7 @@ const getBestSellers = (limit, callback) => {
             SUM(oi.quantity) AS totalSold
         FROM order_items oi
         JOIN products p ON p.id = oi.product_id
+        WHERE p.is_deleted = 0
         GROUP BY p.id, p.productName, p.price, p.image, p.discountPercentage, p.offerMessage
         ORDER BY totalSold DESC
         LIMIT ?

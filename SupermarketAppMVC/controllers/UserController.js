@@ -55,8 +55,21 @@ const login = (req, res) => {
         }
 
         if (results.length === 0) {
-            req.flash('error', 'Invalid email or password.');
-            return res.redirect('/login');
+            // Check if account exists but is disabled to provide clearer feedback
+            return User.findByEmail(email, (lookupErr, lookupResults) => {
+                if (lookupErr) {
+                    console.error('Error checking account status on login:', lookupErr);
+                    req.flash('error', 'Invalid email or password.');
+                    return res.redirect('/login');
+                }
+
+                if (lookupResults && lookupResults.length && lookupResults[0].is_disabled) {
+                    req.flash('error', 'This account has been disabled. Please contact support.');
+                } else {
+                    req.flash('error', 'Invalid email or password.');
+                }
+                return res.redirect('/login');
+            });
         }
 
         const user = results[0];
@@ -220,14 +233,14 @@ const deleteUser = (req, res) => {
     }
 
     if (req.session.user && req.session.user.id === userId) {
-        req.flash('error', 'You cannot delete your own account while signed in.');
+        req.flash('error', 'You cannot disable your own account while signed in.');
         return res.redirect('/admin/users');
     }
 
     User.findById(userId, (err, results) => {
         if (err) {
-            console.error('Error fetching user before delete:', err);
-            req.flash('error', 'Unable to delete user at this time.');
+            console.error('Error fetching user before disable:', err);
+            req.flash('error', 'Unable to update user at this time.');
             return res.redirect('/admin/users');
         }
 
@@ -236,46 +249,47 @@ const deleteUser = (req, res) => {
             return res.redirect('/admin/users');
         }
 
-        const userToDelete = results[0];
+        const userToDisable = results[0];
+        const willDisable = !userToDisable.is_disabled;
 
-        const proceedWithDelete = () => {
-            User.remove(userId, (deleteErr, deleteResult) => {
-                if (deleteErr) {
-                    console.error('Error deleting user:', deleteErr);
-                    req.flash('error', 'Unable to delete user at this time.');
+        const proceedWithToggle = () => {
+            User.setDisabled(userId, willDisable, (updateErr, updateResult) => {
+                if (updateErr) {
+                    console.error('Error updating user status:', updateErr);
+                    req.flash('error', 'Unable to update user at this time.');
                     return res.redirect('/admin/users');
                 }
 
-                if (deleteResult.affectedRows === 0) {
-                    req.flash('error', 'User could not be deleted.');
+                if (updateResult.affectedRows === 0) {
+                    req.flash('error', 'User could not be updated.');
                     return res.redirect('/admin/users');
                 }
 
-                req.flash('success', `User "${userToDelete.username}" deleted successfully.`);
+                req.flash('success', `User "${userToDisable.username}" has been ${willDisable ? 'disabled' : 'enabled'}.`);
                 return res.redirect('/admin/users');
             });
         };
 
-        if (userToDelete.role === 'admin') {
+        if (userToDisable.role === 'admin' && willDisable) {
             return User.countAdmins((countErr, countResults) => {
                 if (countErr) {
-                    console.error('Error checking admin count before delete:', countErr);
-                    req.flash('error', 'Unable to delete user at this time.');
+                    console.error('Error checking admin count before disable:', countErr);
+                    req.flash('error', 'Unable to update user at this time.');
                     return res.redirect('/admin/users');
                 }
 
                 const adminCount = countResults && countResults[0] ? countResults[0].adminCount : 0;
 
                 if (adminCount <= 1) {
-                    req.flash('error', 'Cannot delete the last remaining admin account.');
+                    req.flash('error', 'Cannot disable the last remaining admin account.');
                     return res.redirect('/admin/users');
                 }
 
-                return proceedWithDelete();
+                return proceedWithToggle();
             });
         }
 
-        return proceedWithDelete();
+        return proceedWithToggle();
     });
 };
 

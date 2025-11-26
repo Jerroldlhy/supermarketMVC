@@ -44,7 +44,7 @@ const addToCart = (req, res) => {
         return res.redirect('/shopping');
     }
 
-    db.query('SELECT * FROM products WHERE id = ?', [productId], (error, results) => {
+    db.query('SELECT * FROM products WHERE id = ? AND is_deleted = 0', [productId], (error, results) => {
         if (error) {
             console.error('Error fetching product:', error);
             req.flash('error', 'Unable to add product to cart at this time.');
@@ -142,7 +142,7 @@ const updateCartItem = (req, res) => {
         });
     }
 
-    db.query('SELECT productName, quantity FROM products WHERE id = ?', [productId], (prodErr, prodRows) => {
+    db.query('SELECT productName, quantity FROM products WHERE id = ? AND is_deleted = 0', [productId], (prodErr, prodRows) => {
         if (prodErr) {
             console.error('Error fetching product for update:', prodErr);
             req.flash('error', 'Unable to update cart right now.');
