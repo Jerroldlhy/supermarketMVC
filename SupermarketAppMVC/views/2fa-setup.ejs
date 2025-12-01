@@ -1,0 +1,60 @@
+<%- include('partials/head', { title: 'Two-Factor Authentication | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: '2fa' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="form-card">
+      <h1 class="text-center">Secure your account</h1>
+      <p class="text-center text-muted mb-4">Scan the QR code with Google Authenticator (or any TOTP app), then enter the 6-digit code.</p>
+
+      <% if (errors && errors.length) { %>
+        <div class="alert alert-danger">
+          <% errors.forEach(function(error) { %>
+            <p class="mb-1"><%= error %></p>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <% if (messages && messages.length) { %>
+        <div class="alert alert-success">
+          <% messages.forEach(function(message) { %>
+            <p class="mb-1"><%= message %></p>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <% if (isEnabled) { %>
+        <div class="alert alert-info">2FA is currently enabled for your account. You can re-scan and confirm a new code if you want to refresh your setup.</div>
+      <% } %>
+
+      <div class="row align-items-center gy-4 mb-4">
+        <div class="col-md-6 text-center">
+          <% if (qrCodeDataURL) { %>
+            <img src="<%= qrCodeDataURL %>" alt="Scan this QR code with your authenticator app" class="img-fluid shadow-sm" />
+          <% } else { %>
+            <div class="alert alert-warning">QR code is unavailable right now. Please reload the page.</div>
+          <% } %>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 bg-light rounded">
+            <h5 class="mb-2">Manual key</h5>
+            <code class="d-block mb-2"><%= manualKey %></code>
+            <p class="text-muted mb-0">If you cannot scan the QR code, enter this key into your authenticator app using the TOTP option.</p>
+          </div>
+        </div>
+      </div>
+
+      <form action="/2fa/verify-setup" method="POST" class="row gy-3">
+        <div class="col-12">
+          <label for="token" class="form-label">6-digit code</label>
+          <input type="text" id="token" name="token" class="form-control" maxlength="6" pattern="\d{6}" inputmode="numeric" placeholder="123456" required>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary w-100">Enable 2FA</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

@@ -50,7 +50,17 @@ const findAll = (callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findById = (id, callback) => {
-    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled FROM users WHERE id = ?';
+    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled, is_2fa_enabled FROM users WHERE id = ?';
+    db.query(sql, [id], callback);
+};
+
+/**
+ * Retrieve a user by id including 2FA secret for authentication purposes.
+ * @param {number} id - User id.
+ * @param {Function} callback - Node-style callback (err, results).
+ */
+const findWithSecretById = (id, callback) => {
+    const sql = 'SELECT * FROM users WHERE id = ? LIMIT 1';
     db.query(sql, [id], callback);
 };
 
@@ -73,6 +83,17 @@ const remove = (id, callback) => {
 const updateRole = (id, role, freeDelivery, callback) => {
     const sql = 'UPDATE users SET role = ?, free_delivery = ? WHERE id = ?';
     db.query(sql, [role, freeDelivery ? 1 : 0, id], callback);
+};
+
+/**
+ * Persist a generated 2FA secret and enable flag for a user.
+ * @param {number} id - User id.
+ * @param {string} secret - Base32 encoded secret.
+ * @param {Function} callback - Node-style callback (err, results).
+ */
+const enableTwoFactor = (id, secret, callback) => {
+    const sql = 'UPDATE users SET twofactor_secret = ?, is_2fa_enabled = 1 WHERE id = ?';
+    db.query(sql, [secret, id], callback);
 };
 
 /**
@@ -101,8 +122,10 @@ module.exports = {
     findByEmailAndPassword,
     findAll,
     findById,
+    findWithSecretById,
     remove,
     updateRole,
     countAdmins,
-    setDisabled
+    setDisabled,
+    enableTwoFactor
 };

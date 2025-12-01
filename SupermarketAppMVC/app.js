@@ -111,6 +111,11 @@ app.post('/register', userController.register);
 
 app.get('/login', userController.showLogin);
 app.post('/login', userController.login);
+app.get('/login/2fa', userController.showLogin2FA);
+app.post('/login/2fa', userController.verifyLogin2FA);
+
+app.get('/2fa/setup', checkAuthenticated, userController.show2FASetup);
+app.post('/2fa/verify-setup', checkAuthenticated, userController.verify2FASetup);
 
 app.get('/admin/users', checkAuthenticated, checkAdmin, userController.listUsers);
 app.get('/admin/users/:id/edit', checkAuthenticated, checkAdmin, userController.editUserForm);

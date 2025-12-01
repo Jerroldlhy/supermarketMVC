@@ -1,0 +1,40 @@
+<%- include('partials/head', { title: 'Two-Factor Verification | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'login' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="form-card">
+      <h1 class="text-center">Verify your login</h1>
+      <p class="text-center text-muted mb-4">Enter the 6-digit code from your authenticator app<% if (email) { %> for <strong><%= email %></strong><% } %>.</p>
+
+      <% if (errors && errors.length) { %>
+        <div class="alert alert-danger">
+          <% errors.forEach(function(error) { %>
+            <p class="mb-1"><%= error %></p>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <% if (messages && messages.length) { %>
+        <div class="alert alert-success">
+          <% messages.forEach(function(message) { %>
+            <p class="mb-1"><%= message %></p>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <form action="/login/2fa" method="POST" class="row gy-3">
+        <div class="col-12">
+          <label for="token" class="form-label">Authentication code</label>
+          <input type="text" id="token" name="token" class="form-control" maxlength="6" pattern="\d{6}" inputmode="numeric" placeholder="123456" required>
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary w-100">Verify and continue</button>
+        </div>
+      </form>
+      <p class="text-center text-muted mt-3 mb-0">Lost access? <a href="/login">Go back to login</a></p>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>
