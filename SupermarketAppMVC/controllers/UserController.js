@@ -413,6 +413,53 @@ function updateUserRole(req, res) {
     });
 }
 
+function disableTwoFactor(req, res) {
+    const userId = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(userId)) {
+        req.flash('error', 'Invalid user selected.');
+        return res.redirect('/admin/users');
+    }
+
+    User.findById(userId, function (findErr, results) {
+        if (findErr) {
+            console.error('Error fetching user before disabling 2FA:', findErr);
+            req.flash('error', 'Unable to update user at this time.');
+            return res.redirect('/admin/users');
+        }
+
+        if (!results || results.length === 0) {
+            req.flash('error', 'User not found.');
+            return res.redirect('/admin/users');
+        }
+
+        const managedUser = results[0];
+
+        return User.disableTwoFactor(userId, function (disableErr, disableResult) {
+            if (disableErr) {
+                console.error('Error disabling 2FA:', disableErr);
+                req.flash('error', 'Unable to disable two-factor authentication right now.');
+                return res.redirect('/admin/users');
+            }
+
+            if (!disableResult || disableResult.affectedRows === 0) {
+                req.flash('error', 'User could not be updated.');
+                return res.redirect('/admin/users');
+            }
+
+            if (req.session.user && req.session.user.id === userId) {
+                req.session.user.is_2fa_enabled = 0;
+                if ('twofactor_secret' in req.session.user) {
+                    req.session.user.twofactor_secret = null;
+                }
+            }
+
+            req.flash('success', 'Two-factor authentication has been disabled for "' + managedUser.username + '".');
+            return res.redirect('/admin/users');
+        });
+    });
+}
+
 function deleteUser(req, res) {
     const userId = parseInt(req.params.id, 10);
 
@@ -495,5 +542,6 @@ module.exports = {
     listUsers: listUsers,
     editUserForm: editUserForm,
     updateUserRole: updateUserRole,
+    disableTwoFactor: disableTwoFactor,
     deleteUser: deleteUser
 };

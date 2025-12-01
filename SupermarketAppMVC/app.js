@@ -121,6 +121,7 @@ app.get('/admin/users', checkAuthenticated, checkAdmin, userController.listUsers
 app.get('/admin/users/:id/edit', checkAuthenticated, checkAdmin, userController.editUserForm);
 app.post('/admin/users/:id', checkAuthenticated, checkAdmin, userController.updateUserRole);
 app.post('/admin/users/:id/delete', checkAuthenticated, checkAdmin, userController.deleteUser);
+app.post('/admin/users/:id/disable-2fa', checkAuthenticated, checkAdmin, userController.disableTwoFactor);
 
 app.get('/shopping', checkAuthenticated, checkRoles('user'), (req, res) => {
     const activeCategory = req.query.category ? String(req.query.category).trim() : '';

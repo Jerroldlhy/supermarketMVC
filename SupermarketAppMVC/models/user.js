@@ -40,7 +40,7 @@ const findByEmailAndPassword = (email, password, callback) => {
  * @param {Function} callback - Node-style callback (err, results).
  */
 const findAll = (callback) => {
-    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled FROM users';
+    const sql = 'SELECT id, username, email, role, contact, address, free_delivery, is_disabled, is_2fa_enabled FROM users';
     db.query(sql, callback);
 };
 
@@ -97,6 +97,16 @@ const enableTwoFactor = (id, secret, callback) => {
 };
 
 /**
+ * Disable two-factor authentication and clear the stored secret.
+ * @param {number} id - User id.
+ * @param {Function} callback - Node-style callback (err, results).
+ */
+const disableTwoFactor = (id, callback) => {
+    const sql = 'UPDATE users SET twofactor_secret = NULL, is_2fa_enabled = 0 WHERE id = ?';
+    db.query(sql, [id], callback);
+};
+
+/**
  * Count the number of admin users.
  * @param {Function} callback - Node-style callback (err, results).
  */
@@ -127,5 +137,6 @@ module.exports = {
     updateRole,
     countAdmins,
     setDisabled,
-    enableTwoFactor
+    enableTwoFactor,
+    disableTwoFactor
 };

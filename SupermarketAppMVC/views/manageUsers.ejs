@@ -32,6 +32,7 @@
               <th scope="col">Email</th>
               <th scope="col">Role</th>
               <th scope="col">Free Delivery</th>
+              <th scope="col">2FA</th>
               <th scope="col">Status</th>
               <th scope="col">Contact</th>
               <th scope="col">Address</th>
@@ -54,6 +55,13 @@
                     <% } %>
                   </td>
                   <td>
+                    <% if (u.is_2fa_enabled) { %>
+                      <span class="badge bg-info-subtle text-info">Enabled</span>
+                    <% } else { %>
+                      <span class="badge bg-light text-muted">Disabled</span>
+                    <% } %>
+                  </td>
+                  <td>
                     <% if (u.is_disabled) { %>
                       <span class="badge bg-danger-subtle text-danger">Disabled</span>
                     <% } else { %>
@@ -65,6 +73,11 @@
                   <td class="text-center">
                     <div class="d-flex justify-content-center gap-2">
                       <a class="btn btn-outline-primary btn-sm" href="/admin/users/<%= u.id %>/edit">Edit role</a>
+                      <% if (u.is_2fa_enabled) { %>
+                        <form action="/admin/users/<%= u.id %>/disable-2fa" method="POST" onsubmit="return confirm(<%- JSON.stringify('Disable two-factor authentication for ' + u.username + '?') %>);">
+                          <button type="submit" class="btn btn-outline-warning btn-sm">Disable 2FA</button>
+                        </form>
+                      <% } %>
                       <form action="/admin/users/<%= u.id %>/delete" method="POST" onsubmit="return confirm(<%- JSON.stringify((u.is_disabled ? 'Enable ' : 'Disable ') + u.username + '?') %>);">
                         <button type="submit" class="btn btn-outline-<%= u.is_disabled ? 'success' : 'danger' %> btn-sm" <%= user && user.id === u.id ? 'disabled title=\"You cannot disable your own account.\"' : '' %>>
                           <%= u.is_disabled ? 'Enable' : 'Disable' %>
@@ -76,7 +89,7 @@
               <% }); %>
             <% } else { %>
               <tr>
-                <td colspan="8">
+                <td colspan="10">
                   <div class="empty-state">No users found. Invite your team or start registering shoppers.</div>
                 </td>
               </tr>
