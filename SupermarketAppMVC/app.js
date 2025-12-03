@@ -12,42 +12,6 @@ const productController = require('./controllers/ProductController');
 const orderController = require('./controllers/OrderController');
 const reviewController = require('./controllers/ReviewController');
 const { checkAuthenticated, checkAdmin, checkRoles } = require('./middleware');
-const Product = require('./models/product');
-const Order = require('./models/order');
-
-const normalisePrice = (value) => {
-    const parsed = Number.parseFloat(value);
-    if (!Number.isFinite(parsed) || parsed < 0) {
-        return 0;
-    }
-    return Number(parsed.toFixed(2));
-};
-
-const decorateProduct = (product) => {
-    if (!product) {
-        return product;
-    }
-
-    const basePrice = normalisePrice(product.price);
-    const discountPercentage = Math.min(
-        100,
-        Math.max(0, Number.parseFloat(product.discountPercentage) || 0)
-    );
-    const hasDiscount = discountPercentage > 0;
-    const offerMessage = product.offerMessage ? String(product.offerMessage).trim() : null;
-    const effectivePrice = hasDiscount
-        ? normalisePrice(basePrice * (1 - discountPercentage / 100))
-        : basePrice;
-
-    return {
-        ...product,
-        price: basePrice,
-        discountPercentage,
-        offerMessage,
-        effectivePrice,
-        hasDiscount
-    };
-};
 
 // Set up multer for file uploads
 const storage = multer.diskStorage({
@@ -123,53 +87,7 @@ app.post('/admin/users/:id', checkAuthenticated, checkAdmin, userController.upda
 app.post('/admin/users/:id/delete', checkAuthenticated, checkAdmin, userController.deleteUser);
 app.post('/admin/users/:id/disable-2fa', checkAuthenticated, checkAdmin, userController.disableTwoFactor);
 
-app.get('/shopping', checkAuthenticated, checkRoles('user'), (req, res) => {
-    const activeCategory = req.query.category ? String(req.query.category).trim() : '';
-    const searchTerm = req.query.search ? String(req.query.search).trim() : '';
-    const productFetcher = (() => {
-        if (activeCategory || searchTerm) {
-            return (cb) => Product.findByFilter({
-                category: activeCategory || undefined,
-                search: searchTerm || undefined
-            }, cb);
-        }
-        return (cb) => Product.getAll(cb);
-    })();
-
-    productFetcher((error, products) => {
-        if (error) {
-            console.error('Error loading products:', error);
-            req.flash('error', 'Unable to load products right now.');
-            return res.redirect('/');
-        }
-
-        Product.getCategories((catErr, categoryRows) => {
-            if (catErr) {
-                console.error('Error loading categories:', catErr);
-            }
-
-            const productList = (products || []).map(decorateProduct);
-            const categories = (categoryRows || []).map((row) => row.category).filter(Boolean);
-
-            Order.getBestSellers(3, (bestErr, bestSellers) => {
-                if (bestErr) {
-                    console.error('Error fetching best sellers:', bestErr);
-                }
-
-                res.render('shopping', {
-                    user: req.session.user,
-                    products: productList,
-                    categories,
-                    activeCategory,
-                    searchTerm,
-                    bestSellers: (bestSellers && bestSellers.length) ? bestSellers.map(decorateProduct) : [],
-                    messages: res.locals.messages,
-                    errors: res.locals.errors
-                });
-            });
-        });
-    });
-});
+app.get('/shopping', checkAuthenticated, checkRoles('user'), productController.showShopping);
 
 app.post('/add-to-cart/:id', checkAuthenticated, checkRoles('user'), cartController.addToCart);
 app.get('/cart', checkAuthenticated, checkRoles('user'), cartController.viewCart);

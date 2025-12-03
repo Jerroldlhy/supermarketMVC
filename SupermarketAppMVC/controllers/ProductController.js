@@ -1,5 +1,6 @@
 ﻿const Product = require('../models/product');
 const Review = require('../models/review');
+const Order = require('../models/order');
 
 const toCurrency = (value, precision = 2) => {
     const numberValue = Number.parseFloat(value);
@@ -76,6 +77,69 @@ const enhanceProductRecord = (product) => {
 };
 
 const ProductController = {
+    showShopping: (req, res) => {
+        const activeCategory = req.query.category ? String(req.query.category).trim() : '';
+        const searchTerm = req.query.search ? String(req.query.search).trim() : '';
+
+        const fetchProducts = () => new Promise((resolve, reject) => {
+            const fetcher = (activeCategory || searchTerm)
+                ? (cb) => Product.findByFilter({
+                    category: activeCategory || undefined,
+                    search: searchTerm || undefined
+                }, cb)
+                : (cb) => Product.getAll(cb);
+
+            fetcher((productErr, productRows) => {
+                if (productErr) {
+                    return reject(productErr);
+                }
+                resolve(productRows || []);
+            });
+        });
+
+        const fetchCategories = () => new Promise((resolve) => {
+            Product.getCategories((catErr, categoryRows) => {
+                if (catErr) {
+                    console.error('Error loading categories:', catErr);
+                    return resolve([]);
+                }
+                const categories = (categoryRows || [])
+                    .map((row) => row.category)
+                    .filter(Boolean);
+                resolve(categories);
+            });
+        });
+
+        const fetchBestSellers = () => new Promise((resolve) => {
+            Order.getBestSellers(3, (bestErr, bestRows) => {
+                if (bestErr) {
+                    console.error('Error fetching best sellers:', bestErr);
+                    return resolve([]);
+                }
+                resolve(bestRows || []);
+            });
+        });
+
+        Promise.all([fetchProducts(), fetchCategories(), fetchBestSellers()])
+            .then(([products, categories, bestSellers]) => {
+                res.render('shopping', {
+                    user: req.session.user,
+                    products: products.map(enhanceProductRecord),
+                    categories,
+                    activeCategory,
+                    searchTerm,
+                    bestSellers: bestSellers.map(enhanceProductRecord),
+                    messages: res.locals.messages,
+                    errors: res.locals.errors
+                });
+            })
+            .catch((error) => {
+                console.error('Error loading products:', error);
+                req.flash('error', 'Unable to load products right now.');
+                return res.redirect('/');
+            });
+    },
+
     // Show the inventory page
     showInventory: (req, res) => {
         Product.getAll((error, results) => {
