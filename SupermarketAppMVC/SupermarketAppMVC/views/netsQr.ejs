@@ -1,0 +1,106 @@
+<%- include('partials/head', { title: title || 'NETS QR Payment' }) %>
+<%- include('partials/navbar', { user, activePage: 'cart' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-6">
+        <h2 class="mb-3">Scan to pay with NETS QR</h2>
+        <p class="text-muted">Use your bank simulator app to complete the payment.</p>
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="text-muted small">Amount</div>
+            <div class="fs-4 fw-semibold">$<%= Number(total || 0).toFixed(2) %> <%= currency || 'SGD' %></div>
+            <div class="text-muted small mt-2">Time remaining</div>
+            <div class="display-6 fw-semibold" id="timer">1:00</div>
+          </div>
+        </div>
+        <div class="alert alert-warning d-none" id="nets-expired">
+          <strong>QR expired.</strong> Please generate a new NETS QR code to continue.
+        </div>
+        <div class="d-flex flex-column gap-2">
+          <div class="alert alert-info small mb-0">
+            Tip: On mobile, keep this screen open and switch to your bank app to scan the QR code.
+          </div>
+          <a href="/cart" class="btn btn-outline-secondary">Back to cart</a>
+          <a href="/cart/payment" class="btn btn-primary d-none" id="nets-retry">Generate new NETS QR</a>
+          <a href="/shopping" class="btn btn-light">Continue shopping</a>
+        </div>
+      </div>
+      <div class="col-lg-6 text-center">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <img src="<%= qrCodeUrl %>" alt="NETS QR Code" class="img-fluid">
+          </div>
+        </div>
+        <div class="small text-muted mt-2">NETS transaction ref: <%= txnRetrievalRef %></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% const netsScripts = `
+  <script src="https://unpkg.com/event-source-polyfill"></script>
+  <script>
+    var txnRetrievalRef = '${txnRetrievalRef}';
+    var courseInitId = '${courseInitId || ''}';
+    var url = '/sse/payment-status/' + txnRetrievalRef + '?course_init_id=' + encodeURIComponent(courseInitId);
+
+    var eventSource = new EventSourcePolyfill(url, {
+      headers: {
+        'api-key': '${apiKey || ''}',
+        'project-id': '${projectId || ''}'
+      },
+      heartbeatTimeout: 150000
+    });
+
+    eventSource.addEventListener('message', function (event) {
+      var data = JSON.parse(event.data || '{}');
+      if (data.success) {
+        eventSource.close();
+        window.location.href = '/nets-qr/success?txn_retrieval_ref=' + encodeURIComponent(txnRetrievalRef);
+      } else if (data.fail) {
+        eventSource.close();
+        window.location.href = '/nets-qr/fail?txn_retrieval_ref=' + encodeURIComponent(txnRetrievalRef);
+      }
+    });
+
+    var timerElement = document.getElementById('timer');
+    var remainingTime = 60;
+
+    var expiredBanner = document.getElementById('nets-expired');
+    var retryButton = document.getElementById('nets-retry');
+
+    var markPaymentFailed = function () {
+      fetch('/api/payments/mark-failed', { method: 'POST' }).catch(function () {});
+    };
+
+    var updateTimer = function () {
+      var minutes = Math.floor(remainingTime / 60);
+      var seconds = remainingTime % 60;
+      if (timerElement) {
+        timerElement.textContent = minutes + ':' + String(seconds).padStart(2, '0');
+      }
+      remainingTime -= 1;
+      if (remainingTime < 0) {
+        clearInterval(timerInterval);
+        if (eventSource) eventSource.close();
+        if (timerElement) {
+          timerElement.textContent = 'Expired';
+        }
+        if (expiredBanner) {
+          expiredBanner.classList.remove('d-none');
+        }
+        if (retryButton) {
+          retryButton.classList.remove('d-none');
+        }
+        markPaymentFailed();
+      }
+    };
+
+    var timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();
+  </script>
+`; %>
+
+<%- include('partials/footer', { extraScripts: netsScripts }) %>

@@ -1,0 +1,187 @@
+<%- include('partials/head', { title: 'Payment Reports | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'reports' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h2 class="mb-1">Payment reports</h2>
+        <p class="text-muted mb-0">Reconciliation summary and recent payment attempts.</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <form action="/admin/reports/payments/fraud-test" method="POST">
+          <button type="submit" class="btn btn-outline-danger">Run fraud test</button>
+        </form>
+        <a href="/inventory" class="btn btn-outline-secondary">Back to inventory</a>
+      </div>
+    </div>
+
+    <% if (messages && messages.length) { %>
+      <div class="alert alert-warning">
+        <% messages.forEach(function(message) { %>
+          <div><%= message %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (errors && errors.length) { %>
+      <div class="alert alert-danger">
+        <% errors.forEach(function(message) { %>
+          <div><%= message %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Order payment summary</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Status</th>
+                <th class="text-end">Orders</th>
+                <th class="text-end">Total (SGD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!summary || !summary.length) { %>
+                <tr>
+                  <td colspan="4" class="text-center text-muted">No summary available.</td>
+                </tr>
+              <% } else { %>
+                <% summary.forEach(function(row) { %>
+                  <tr>
+                    <td><%= row.paymentMethod || 'N/A' %></td>
+                    <td><%= row.paymentStatus || 'N/A' %></td>
+                    <td class="text-end"><%= row.orderCount %></td>
+                    <td class="text-end"><%= Number(row.totalAmount || 0).toFixed(2) %></td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Recent payment attempts</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Provider</th>
+                <th>Status</th>
+                <th class="text-end">Amount</th>
+                <th class="text-end">Time</th>
+                <th>Failure</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!attempts || !attempts.length) { %>
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No attempts logged.</td>
+                </tr>
+              <% } else { %>
+                <% attempts.forEach(function(row) { %>
+                  <tr>
+                    <td><%= row.id %></td>
+                    <td><%= row.username || row.email || row.userId %></td>
+                    <td><%= row.provider %> / <%= row.method %></td>
+                    <td><%= row.status %></td>
+                    <td class="text-end"><%= row.currency || 'SGD' %> <%= Number(row.amount || 0).toFixed(2) %></td>
+                    <td class="text-end"><%= new Date(row.createdAt).toLocaleString() %></td>
+                    <td><%= row.failureReason || '-' %></td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="card-title">Fraud events</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Risk</th>
+                <th>Flags</th>
+                <th>Action</th>
+                <th>IP</th>
+                <th class="text-end">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!fraudEvents || !fraudEvents.length) { %>
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No fraud events logged.</td>
+                </tr>
+              <% } else { %>
+                <% fraudEvents.forEach(function(row) { %>
+                  <tr>
+                    <td><%= row.id %></td>
+                    <td><%= row.username || row.email || row.userId %></td>
+                    <td><%= row.riskScore %></td>
+                    <td><%= row.flags || '-' %></td>
+                    <td><%= row.action %></td>
+                    <td><%= row.ipAddress || '-' %></td>
+                    <td class="text-end"><%= new Date(row.createdAt).toLocaleString() %></td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Paid orders without attempts</h5>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>User</th>
+                <th class="text-end">Total</th>
+                <th>Status</th>
+                <th>Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!missingAttempts || !missingAttempts.length) { %>
+                <tr>
+                  <td colspan="5" class="text-center text-muted">No gaps detected.</td>
+                </tr>
+              <% } else { %>
+                <% missingAttempts.forEach(function(row) { %>
+                  <tr>
+                    <td><%= row.id %></td>
+                    <td><%= row.user_id %></td>
+                    <td class="text-end"><%= Number(row.total || 0).toFixed(2) %></td>
+                    <td><%= row.payment_status %></td>
+                    <td><%= row.payment_method || 'N/A' %></td>
+                  </tr>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

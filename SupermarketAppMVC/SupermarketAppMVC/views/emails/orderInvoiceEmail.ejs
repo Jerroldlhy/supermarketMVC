@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Order Invoice</title>
+</head>
+<body style="margin:0; padding:0; background:#f6f7fb; font-family:Segoe UI, Arial, sans-serif; color:#0f172a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:16px; box-shadow:0 12px 30px rgba(15,23,42,.08); overflow:hidden;">
+          <tr>
+            <td style="padding:24px 28px; background:linear-gradient(135deg,#eef4ff,#fef9ff,#ecf3ff); border-bottom:1px solid #e5e7eb;">
+              <h2 style="margin:0 0 6px; font-size:22px;">Order Invoice</h2>
+              <div style="color:#475467; font-size:14px;">Invoice #: <strong><%= order.invoiceNumber || '-' %></strong></div>
+              <% if (order.shippingAddress) { %>
+              <div style="color:#475467; font-size:14px;">Shipping Address: <strong><%= order.shippingAddress.address || '-' %></strong></div>
+              <div style="color:#475467; font-size:14px;">Floor-Unit / Postal: <strong><%= order.shippingAddress.floorUnit || '-' %> / <%= order.shippingAddress.postal || '-' %></strong></div>
+              <% } %>
+              <div style="color:#475467; font-size:14px;">Order Date: <strong><%= order.invoiceDate ? new Date(order.invoiceDate).toLocaleString() : '-' %></strong></div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:22px 28px;">
+              <h3 style="margin:0 0 12px; font-size:16px; color:#111827;">Order Items</h3>
+              <% if (items && items.length) { %>
+                <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px; border-collapse:collapse;">
+                  <thead>
+                    <tr style="text-transform:uppercase; font-size:11px; color:#64748b;">
+                      <th align="left" style="padding:8px 0; border-bottom:1px solid #e5e7eb;">Item</th>
+                      <th align="right" style="padding:8px 0; border-bottom:1px solid #e5e7eb;">Unit Price</th>
+                      <th align="right" style="padding:8px 0; border-bottom:1px solid #e5e7eb;">Qty</th>
+                      <th align="right" style="padding:8px 0; border-bottom:1px solid #e5e7eb;">Line Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% items.forEach(function(item){ 
+                         const qty = Number(item.quantity || 0);
+                         const unitPrice = Number(item.price || 0);
+                         const lineTotal = qty * unitPrice;
+                    %>
+                      <tr>
+                        <td style="padding:8px 0;"><%= item.productName || ('Product #' + item.id) %></td>
+                        <td style="padding:8px 0; text-align:right;">$<%= unitPrice.toFixed(2) %></td>
+                        <td style="padding:8px 0; text-align:right;"><%= qty %></td>
+                        <td style="padding:8px 0; text-align:right;">$<%= lineTotal.toFixed(2) %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              <% } else { %>
+                <div style="color:#64748b; font-size:13px;">No items found.</div>
+              <% } %>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 28px 26px;">
+              <h3 style="margin:0 0 12px; font-size:16px; color:#111827;">Order Summary</h3>
+              <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+                <tr>
+                  <td style="padding:6px 0; color:#64748b;">Payment Method</td>
+                  <td style="padding:6px 0; text-align:right;"><%= order.paymentMethod || 'Unknown' %></td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0; color:#64748b;">Subtotal</td>
+                  <td style="padding:6px 0; text-align:right;">$<%= Number(order.subtotal || 0).toFixed(2) %></td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0; color:#64748b;">Tax</td>
+                  <td style="padding:6px 0; text-align:right;">$<%= Number(order.taxAmount || 0).toFixed(2) %></td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0; color:#64748b;">Total</td>
+                  <td style="padding:6px 0; text-align:right;"><strong>$<%= Number(order.total || 0).toFixed(2) %></strong></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:18px 28px; border-top:1px solid #e5e7eb; color:#64748b; font-size:12px;">
+              This is an automated order invoice from Supermarket App.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

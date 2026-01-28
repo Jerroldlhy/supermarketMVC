@@ -1,0 +1,49 @@
+<%- include('partials/head', { title: 'Supermarket App' }) %>
+<%- include('partials/navbar', { user }) %>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="hero-card">
+        <div class="row g-4 align-items-center">
+          <div class="col-12 col-lg-6">
+            <div class="hero-body">
+          <% if (!user) { %>
+            <h1 class="mb-3">Welcome to Supermarket App</h1>
+            <p class="lead text-muted mb-4">Shop smarter with curated groceries, exclusive deals, and a seamless check-out experience. Join us and start filling your cart today.</p>
+            <div class="hero-cta">
+              <a href="/register" class="btn btn-primary btn-lg">Create an account</a>
+              <a href="/login" class="btn btn-secondary btn-lg">Sign in</a>
+            </div>
+          <% } else if (user.role === 'admin') { %>
+            <h1 class="mb-3">Hello, <%= user.username %>!</h1>
+            <p class="lead text-muted mb-4">Manage inventory, oversee your catalogue, and keep shoppers supplied with the freshest products.</p>
+            <div class="hero-cta">
+              <a href="/inventory" class="btn btn-primary btn-lg">Go to Inventory</a>
+              <a href="/admin/users" class="btn btn-secondary btn-lg">Manage Users</a>
+            </div>
+          <% } else { %>
+            <h1 class="mb-3">Welcome back, <%= user.username %>!</h1>
+            <p class="lead text-muted mb-4">Your next grocery haul is just a few clicks away. Discover fresh picks and weekly deals.</p>
+            <div class="hero-cta">
+              <a href="/shopping" class="btn btn-primary btn-lg">Start Shopping</a>
+              <a href="/cart" class="btn btn-secondary btn-lg">View Cart</a>
+            </div>
+          <% } %>
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <div class="hero-image-wrapper">
+              <img
+                src="https://eu-images.contentstack.com/v3/assets/blt58a1f8f560a1ab0e/blt4e19ef65238922b3/66c2e66d01251f29fe822793/fresh-hero7.gif"
+                alt="Fresh groceries ready for delivery"
+                class="img-fluid rounded-4 shadow hero-image"
+                loading="lazy"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<%- include('partials/footer') %>

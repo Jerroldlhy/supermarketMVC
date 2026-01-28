@@ -1,0 +1,223 @@
+﻿<%- include('partials/head', { title: 'Deliveries | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'deliveries' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div>
+        <p class="mb-1 text-muted">Administrator dashboard</p>
+        <h2 class="mb-0">Delivery overview</h2>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <button type="button" id="print-delivery-summary" class="btn btn-outline-secondary btn-sm">Print summary</button>
+        <span class="badge bg-light text-dark px-3 py-2 align-self-center">Open orders: <strong><%= orders ? orders.length : 0 %></strong></span>
+      </div>
+    </div>
+
+    <% if (!orders || !orders.length) { %>
+      <div class="empty-state">
+        <h3>No deliveries yet</h3>
+        <p class="text-muted">Orders will appear here once shoppers check out with delivery or pickup instructions.</p>
+      </div>
+    <% } else { %>
+      <div class="accordion" id="admin-deliveries">
+        <% orders.forEach(function(order, index) { %>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="delivery-heading-<%= order.id %>">
+              <button class="accordion-button <%= index === 0 ? '' : 'collapsed' %>" type="button" data-bs-toggle="collapse" data-bs-target="#delivery-<%= order.id %>" aria-expanded="<%= index === 0 ? 'true' : 'false' %>" aria-controls="delivery-<%= order.id %>">
+                <div class="w-100 d-flex flex-column flex-md-row align-items-md-center justify-content-between">
+                  <div>
+                    <span class="me-2 fw-semibold">Order #<%= order.id %></span>
+                    <span class="text-muted small"><%= new Date(order.created_at).toLocaleString() %></span>
+                  </div>
+                  <div class="d-flex flex-column flex-md-row align-items-md-center gap-2 mt-2 mt-md-0">
+                    <% const statusValue = order.delivery_status || 'packed'; %>
+                    <% const statusLabel = statusValue === 'in_transit' ? 'In transit' : statusValue.charAt(0).toUpperCase() + statusValue.slice(1); %>
+                    <span class="badge <%= order.delivery_method === 'delivery' ? 'bg-primary-subtle text-primary' : 'bg-light text-dark' %> text-uppercase">
+                      <%= order.delivery_method === 'delivery' ? 'Delivery' : 'Pickup' %>
+                    </span>
+                    <span class="badge bg-light text-dark border"><%= statusLabel %></span>
+                    <span class="badge bg-dark-subtle text-dark">Total: $<%= Number(order.total).toFixed(2) %></span>
+                  </div>
+                </div>
+              </button>
+            </h2>
+            <div id="delivery-<%= order.id %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" aria-labelledby="delivery-heading-<%= order.id %>" data-bs-parent="#admin-deliveries">
+              <div class="accordion-body">
+                <div class="row g-4">
+                  <div class="col-12 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                      <div class="card-body">
+                        <h5 class="card-title mb-1"><%= order.username %></h5>
+                        <p class="text-muted small mb-3"><%= order.email %> &bull; <%= order.contact %></p>
+                        <p class="mb-2"><strong>Saved address:</strong><br><span class="text-muted"><%= order.account_address %></span></p>
+                        <p class="mb-0">
+                          <span class="badge <%= order.free_delivery ? 'bg-success-subtle text-success' : 'bg-light text-muted' %>">
+                            <%= order.free_delivery ? 'Free delivery user' : 'Standard delivery' %>
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-lg-8">
+                    <div class="card shadow-sm mb-3">
+                      <div class="card-body">
+                        <h5 class="card-title">Items</h5>
+                        <% const items = orderItems[order.id] || []; %>
+                        <% if (items.length) { %>
+                          <div class="table-responsive">
+                            <table class="table align-middle mb-0">
+                              <thead>
+                                <tr>
+                                  <th scope="col">Product</th>
+                                  <th scope="col" class="text-center">Qty</th>
+                                  <th scope="col" class="text-end">Price</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <% items.forEach(function(item) { %>
+                                  <tr>
+                                    <td><%= item.productName %></td>
+                                    <td class="text-center"><%= item.quantity %></td>
+                                    <td class="text-end">$<%= Number(item.price).toFixed(2) %></td>
+                                  </tr>
+                                <% }); %>
+                              </tbody>
+                            </table>
+                          </div>
+                        <% } else { %>
+                          <p class="text-muted mb-0">No line items recorded.</p>
+                        <% } %>
+                      </div>
+                    </div>
+
+                    <div class="card shadow-sm">
+                      <div class="card-body">
+                        <h5 class="card-title mb-3">Delivery management</h5>
+                        <form action="/orders/<%= order.id %>/delivery" method="POST" class="row gy-3">
+                          <% const isReceived = statusValue === 'received'; %>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Method</label>
+                            <select name="deliveryMethod" class="form-select" <%= isReceived ? 'disabled' : '' %>>
+                              <option value="pickup" <%= order.delivery_method === 'pickup' ? 'selected' : '' %>>Pickup</option>
+                              <option value="delivery" <%= order.delivery_method === 'delivery' ? 'selected' : '' %>>Delivery</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Status</label>
+                            <select name="deliveryStatus" class="form-select" <%= isReceived ? 'disabled' : '' %>>
+                              <option value="packed" <%= statusValue === 'packed' ? 'selected' : '' %>>Packed</option>
+                              <option value="shipped" <%= statusValue === 'shipped' ? 'selected' : '' %>>Shipped</option>
+                              <option value="in_transit" <%= statusValue === 'in_transit' ? 'selected' : '' %>>In transit</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-8">
+                            <label for="admin-delivery-address-<%= order.id %>" class="form-label">Delivery address</label>
+                            <textarea
+                              class="form-control"
+                              id="admin-delivery-address-<%= order.id %>"
+                              name="deliveryAddress"
+                              rows="2"
+                              placeholder="Enter delivery details"
+                              <%= isReceived ? 'disabled' : '' %>><%= order.delivery_address || order.account_address || '' %></textarea>
+                            <small class="text-muted">Only required when delivery is selected.</small>
+                          </div>
+                          <div class="col-12">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="waive-fee-<%= order.id %>" name="waiveFee" <%= Number(order.delivery_fee || 0) === 0 ? 'checked' : '' %> <%= isReceived ? 'disabled' : '' %>>
+                              <label class="form-check-label" for="waive-fee-<%= order.id %>">Waive the $1.50 delivery fee for this order</label>
+                            </div>
+                            <small class="text-muted">
+                              Current fee: <%= Number(order.delivery_fee || 0) > 0 ? '$' + Number(order.delivery_fee).toFixed(2) : 'Free' %>
+                            </small>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary">Print this order</a>
+                            <button type="submit" class="btn btn-outline-primary" <%= isReceived ? 'disabled' : '' %>>Save changes</button>
+                          </div>
+                        </form>
+                        <% if (isReceived) { %>
+                          <div class="alert alert-light border mt-3 mb-0">
+                            Delivery confirmed by shopper. Changes are locked.
+                          </div>
+                        <% } %>
+                      </div>
+                    </div>
+                    <div class="card shadow-sm mt-3">
+                      <div class="card-body">
+                        <h5 class="card-title mb-3">PayPal shipment details</h5>
+                        <form action="/admin/orders/<%= order.id %>/tracking" method="POST" class="row gy-3">
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Carrier</label>
+                            <select name="carrier" class="form-select">
+                              <option value="">Select carrier</option>
+                              <option value="DHL">DHL</option>
+                              <option value="DHL">Qxpress</option>
+                              <option value="FEDEX">Speedpost</option>
+                              <option value="UPS">NinjaVan</option>
+                              <option value="USPS">Lalamove</option>
+                              <option value="USPS">J&T Express</option>
+                              <option value="OTHER">Other</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Tracking number</label>
+                            <input type="text" name="trackingNumber" class="form-control" placeholder="Enter tracking number">
+                          </div>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Carrier (Other)</label>
+                            <input type="text" name="carrierOther" class="form-control" placeholder="Only if carrier is Other">
+                          </div>
+                          <div class="col-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-outline-primary">Send to PayPal</button>
+                          </div>
+                        </form>
+                        <small class="text-muted">Status sent to PayPal is based on the admin delivery status (packed/in transit = SHIPPED, received = DELIVERED).</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<% const adminDeliveryScripts = `
+  <script>
+    (() => {
+      const printBtn = document.getElementById('print-delivery-summary');
+      if (!printBtn) return;
+
+      const openAll = () => {
+        const panels = document.querySelectorAll('#admin-deliveries .accordion-collapse');
+        panels.forEach((panel) => {
+          panel.dataset.wasOpen = panel.classList.contains('show') ? '1' : '0';
+          panel.classList.add('show');
+        });
+      };
+
+      const restore = () => {
+        const panels = document.querySelectorAll('#admin-deliveries .accordion-collapse');
+        panels.forEach((panel) => {
+          if (panel.dataset.wasOpen === '0') {
+            panel.classList.remove('show');
+          }
+          delete panel.dataset.wasOpen;
+        });
+      };
+
+      window.addEventListener('afterprint', restore);
+
+      printBtn.addEventListener('click', () => {
+        openAll();
+        window.print();
+      });
+    })();
+  </script>
+`; %>
+
+<%- include('partials/footer', { extraScripts: adminDeliveryScripts }) %>

@@ -1,0 +1,68 @@
+﻿<%- include('partials/head', { title: 'Add Product | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'addProduct' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="form-card">
+      <h2 class="text-center">Add new product</h2>
+      <p class="text-center text-muted mb-4">Populate your store with the latest arrivals and keep shoppers engaged.</p>
+
+      <% if (messages && messages.length) { %>
+        <% messages.forEach(function(message) { %>
+          <div class="alert alert-success"><%= message %></div>
+        <% }); %>
+      <% } %>
+
+      <% if (errors && errors.length) { %>
+        <% errors.forEach(function(error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+        <% }); %>
+      <% } %>
+
+      <form action="/addProduct" method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+          <label for="name" class="form-label">Product name</label>
+          <input type="text" class="form-control" id="name" name="name" placeholder="Organic Apples" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="quantity" class="form-label">Quantity in stock</label>
+          <input type="number" class="form-control" id="quantity" name="quantity" min="0" step="1" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="price" class="form-label">Price ($)</label>
+          <input type="number" class="form-control" id="price" name="price" min="0" step="0.01" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="discount" class="form-label">Discount (%)</label>
+          <input type="number" class="form-control" id="discount" name="discount" min="0" max="100" step="0.01" value="0">
+          <small class="text-muted">Leave as 0 for no discount. Maximum 100.</small>
+        </div>
+
+        <div class="mb-3">
+          <label for="category" class="form-label">Section / Category</label>
+          <input type="text" class="form-control" id="category" name="category" placeholder="e.g. Fruits" required>
+          <small class="text-muted">Used to help shoppers filter items (e.g. Fruits, Bakery, Dairy).</small>
+        </div>
+
+        <div class="mb-3">
+          <label for="offer" class="form-label">Promotional offer</label>
+          <textarea class="form-control" id="offer" name="offer" rows="2" placeholder="E.g. Free delivery with every purchase"></textarea>
+          <small class="text-muted">Optional message shown to shoppers alongside any discount.</small>
+        </div>
+
+        <div class="mb-4">
+          <label for="image" class="form-label">Product image</label>
+          <input class="form-control" type="file" id="image" name="image" accept="image/*" required>
+          <small class="text-muted">Recommended: square image, at least 600px.</small>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Save product</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

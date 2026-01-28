@@ -1,0 +1,28 @@
+<%- include('partials/head', { title: title || 'Oops' }) %>
+<%- include('partials/navbar', { user }) %>
+
+  <section class="page-section">
+    <div class="container">
+      <div class="empty-state">
+        <span class="badge bg-primary-subtle text-primary mb-3">Error <%= statusCode || 500 %></span>
+        <h1 class="mb-3"><%= title || 'Something went wrong' %></h1>
+        <p class="text-muted mb-4"><%= message || 'Please try again.' %></p>
+        <% if (typeof details !== 'undefined' && details) { %>
+          <div class="alert alert-warning text-start mb-4">
+            <strong>Details:</strong> <%= details %>
+          </div>
+        <% } %>
+        <div class="d-flex flex-wrap justify-content-center gap-3">
+          <% if (actions && actions.length) { %>
+            <% actions.forEach(function(action, index) { %>
+              <a href="<%= action.href %>" class="btn <%= index === 0 ? 'btn-primary' : 'btn-secondary' %>"><%= action.label %></a>
+            <% }); %>
+          <% } else { %>
+            <a href="/" class="btn btn-primary">Go to Home</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<%- include('partials/footer') %>

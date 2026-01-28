@@ -1,0 +1,300 @@
+﻿<%- include('partials/head', { title: 'Purchase History | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'orders' }) %>
+
+<main class="page-section">
+    <div class="container">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+          <p class="mb-1 text-muted">Your account</p>
+          <h2 class="mb-0">Purchase history</h2>
+          <% if (user && user.email) { %>
+            <div class="small text-muted">Signed in as <%= user.email %></div>
+          <% } %>
+        </div>
+        <div class="d-flex gap-2">
+
+          <a href="/shopping" class="btn btn-primary">Continue shopping</a>
+        </div>
+      </div>
+
+      <% if (messages && messages.length) { %>
+        <% messages.forEach(function(message) { %>
+          <div class="alert alert-success"><%= message %></div>
+        <% }); %>
+      <% } %>
+
+      <% if (errors && errors.length) { %>
+        <% errors.forEach(function(error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+        <% }); %>
+      <% } %>
+
+      <% if (paymentReminder) { %>
+        <div class="alert alert-info d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+          <div>
+            <strong>Payment not completed.</strong>
+            <div class="small text-muted">You can return to the payment step to finish your purchase.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="/cart/payment" class="btn btn-sm btn-primary">Continue to payment</a>
+            <a href="/cart" class="btn btn-sm btn-outline-secondary">Back to cart</a>
+          </div>
+        </div>
+      <% } %>
+
+      <% const paymentLabel = (method) => {
+        const value = (method || '').toString().toLowerCase();
+        if (value === 'paypal') return 'PayPal';
+        if (value === 'nets') return 'NETS QR';
+        if (value === 'card') return 'Card';
+        return method ? method.toUpperCase() : 'Unknown';
+      }; %>
+      <% const paymentStatusLabel = (status) => {
+        const value = (status || '').toString().toUpperCase();
+        return value || 'PAID';
+      }; %>
+
+      <% if (!orders || orders.length === 0) { %>
+        <div class="empty-state">
+          <h3>No purchases yet</h3>
+          <p class="text-muted">Browse the catalogue and start building your basket.</p>
+          <a href="/shopping" class="btn btn-primary">Discover products</a>
+        </div>
+      <% } else { %>
+        <div class="accordion" id="order-history">
+          <% orders.forEach(function(order, index) { %>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading-<%= order.id %>">
+                <button class="accordion-button <%= index === 0 ? '' : 'collapsed' %>" type="button" data-bs-toggle="collapse" data-bs-target="#order-<%= order.id %>" aria-expanded="<%= index === 0 ? 'true' : 'false' %>" aria-controls="order-<%= order.id %>">
+                  <span class="me-3 fw-semibold">Order #<%= order.id %></span>
+                  <small class="text-muted me-auto"><%= new Date(order.created_at).toLocaleString() %></small>
+                  <span class="badge bg-primary-subtle text-primary">Total: $<%= Number(order.total).toFixed(2) %></span>
+                </button>
+              </h2>
+              <div id="order-<%= order.id %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" aria-labelledby="heading-<%= order.id %>" data-bs-parent="#order-history">
+                <div class="accordion-body">
+                  <% const items = orderItems[order.id] || []; %>
+                  <% if (items.length) { %>
+                    <div class="table-responsive">
+                      <table class="table align-middle">
+                        <thead>
+                          <tr>
+                            <th scope="col">Product</th>
+                            <th scope="col" class="text-center">Quantity</th>
+                            <th scope="col" class="text-end">Price</th>
+                            <th scope="col" class="text-end">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <% items.forEach(function(item) { %>
+                            <tr>
+                              <td>
+                                <div class="d-flex align-items-center gap-3">
+                                  <% if (item.image) { %>
+                                    <img src="/images/<%= item.image %>" alt="<%= item.productName %>" width="50" height="50" class="rounded">
+                                  <% } %>
+                                  <div>
+                                    <% if (item.isDeleted) { %>
+                                      <div class="text-muted"><%= item.productName %></div>
+                                      <span class="badge bg-light text-dark">Product removed</span>
+                                    <% } else { %>
+                                      <a href="/product/<%= item.product_id %>" class="text-decoration-none"><%= item.productName %></a>
+                                    <% } %>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="text-center"><%= item.quantity %></td>
+                              <td class="text-end">$<%= Number(item.price).toFixed(2) %></td>
+                              <td class="text-end">$<%= (Number(item.price) * Number(item.quantity)).toFixed(2) %></td>
+                            </tr>
+                          <% }); %>
+                        </tbody>
+                      </table>
+                    </div>
+                  <% } else { %>
+                    <p class="text-muted mb-0">No items found for this order.</p>
+                  <% } %>
+
+                  <div class="card mt-3">
+                    <div class="card-body">
+                      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3">
+                        <div>
+                          <h5 class="mb-1">Delivery details</h5>
+                          <span class="badge <%= order.delivery_method === 'delivery' ? 'bg-primary-subtle text-primary' : 'bg-light text-dark' %> text-uppercase"><%= order.delivery_method === 'delivery' ? 'Delivery' : 'Pickup' %></span>
+                        </div>
+                        <div class="text-md-end small text-muted">
+                          <% if (order.delivery_method === 'delivery') { %>
+                            Fee: <%= Number(order.delivery_fee || 0) > 0 ? '$' + Number(order.delivery_fee).toFixed(2) : 'Free' %>
+                          <% } else { %>
+                            No delivery fee.
+                          <% } %>
+                        </div>
+                      </div>
+
+                      <% const statusValue = order.delivery_status || 'packed'; %>
+                      <% const statusLabel = statusValue === 'in_transit' ? 'In transit' : statusValue.charAt(0).toUpperCase() + statusValue.slice(1); %>
+                      <p class="text-muted mb-3">
+                        <strong>Status:</strong>
+                        <span class="badge bg-light text-dark border"><%= statusLabel %></span>
+                      </p>
+                      <% const paymentStatusValue = paymentStatusLabel(order.payment_status); %>
+                      <% const isPendingPayment = paymentStatusValue === 'PENDING'; %>
+                      <% const isFailedPayment = paymentStatusValue === 'FAILED'; %>
+                      <p class="text-muted mb-3">
+                        <strong>Payment:</strong>
+                        <span class="badge bg-primary-subtle text-primary"><%= paymentLabel(order.payment_method) %></span>
+                        <span class="badge <%= isFailedPayment ? 'bg-danger-subtle text-danger' : 'bg-light text-dark border' %> ms-2"><%= paymentStatusValue %></span>
+                      </p>
+
+                      <% if (order.delivery_method === 'delivery') { %>
+                        <p class="text-muted mb-3">
+                          <strong>Address:</strong>
+                          <%= order.delivery_address ? order.delivery_address : 'Pending confirmation' %>
+                        </p>
+                      <% } else { %>
+                        <p class="text-muted mb-3">We will notify you when your pickup is ready.</p>
+                      <% } %>
+
+                      <% if (user && user.role === 'admin') { %>
+                        <form action="/orders/<%= order.id %>/delivery" method="POST" class="row gy-3">
+                          <% const isReceived = statusValue === 'received'; %>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Update method</label>
+                            <select name="deliveryMethod" class="form-select" <%= isReceived ? 'disabled' : '' %>>
+                              <option value="pickup" <%= order.delivery_method === 'pickup' ? 'selected' : '' %>>Pickup</option>
+                              <option value="delivery" <%= order.delivery_method === 'delivery' ? 'selected' : '' %>>Delivery</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-4">
+                            <label class="form-label">Delivery status</label>
+                            <select name="deliveryStatus" class="form-select" <%= isReceived ? 'disabled' : '' %>>
+                              <option value="packed" <%= statusValue === 'packed' ? 'selected' : '' %>>Packed</option>
+                              <option value="shipped" <%= statusValue === 'shipped' ? 'selected' : '' %>>Shipped</option>
+                              <option value="in_transit" <%= statusValue === 'in_transit' ? 'selected' : '' %>>In transit</option>
+                            </select>
+                          </div>
+                          <div class="col-12 col-md-8">
+                            <label for="order-address-<%= order.id %>" class="form-label">Delivery address</label>
+                            <textarea
+                              id="order-address-<%= order.id %>"
+                              name="deliveryAddress"
+                              rows="2"
+                              class="form-control"
+                              placeholder="Provide address for delivery"><%= order.delivery_address || user.address || '' %></textarea>
+                            <small class="text-muted">Required if delivery is selected. Pickup orders can leave this blank.</small>
+                          </div>
+                          <div class="col-12 d-flex justify-content-end">
+                            <div class="d-flex gap-2">
+                              <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary btn-sm">Print this order</a>
+                              <button type="submit" class="btn btn-outline-primary btn-sm" <%= isReceived ? 'disabled' : '' %>>Save delivery changes</button>
+                            </div>
+                          </div>
+                        </form>
+                        <% if (isReceived) { %>
+                          <div class="alert alert-light border mt-3 mb-0">
+                            Delivery confirmed by shopper. Changes are locked.
+                          </div>
+                        <% } %>
+                      <% } else { %>
+                        <div class="d-flex justify-content-end">
+                          <div class="d-flex gap-2">
+                            <% if (order.delivery_method === 'delivery' && statusValue !== 'received') { %>
+                              <form action="/orders/<%= order.id %>/confirm-delivery" method="POST">
+                                <button type="submit" class="btn btn-success btn-sm">Confirm received</button>
+                              </form>
+                            <% } %>
+                            <% if (isPendingPayment) { %>
+                              <form action="/orders/<%= order.id %>/retry-payment" method="POST">
+                                <button type="submit" class="btn btn-primary btn-sm">Retry payment</button>
+                              </form>
+                            <% } %>
+                            <a href="/orders/<%= order.id %>/print" target="_blank" class="btn btn-outline-secondary btn-sm">Print this order</a>
+                            <a href="/refunds/request/<%= order.id %>" class="btn btn-outline-warning btn-sm">Request refund</a>
+                          </div>
+                        </div>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <% if (bestSellers && bestSellers.length) { %>
+        <div class="mt-5">
+          <span class="text-uppercase small text-muted">You might also like</span>
+          <h3 class="mt-2">Popular with other shoppers</h3>
+          <div class="row g-3 mt-3">
+            <% bestSellers.forEach(function(item) { %>
+              <div class="col-12 col-md-6 col-lg-4 col-xxl-3">
+                <div class="card h-100 border-0 shadow-sm">
+                  <% if (item.image) { %>
+                    <img src="/images/<%= item.image %>" class="card-img-top" alt="<%= item.productName %>">
+                  <% } else { %>
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 180px;">
+                      <span class="text-muted">Image coming soon</span>
+                    </div>
+                  <% } %>
+                  <div class="card-body">
+                    <h5 class="card-title"><a href="/product/<%= item.id %>" class="text-decoration-none text-dark"><%= item.productName %></a></h5>
+                    <p class="mb-2 text-muted">Sold <strong><%= item.totalSold %></strong> times</p>
+                    <% if (item.hasDiscount) { %>
+                      <div class="d-flex flex-column mb-2">
+                        <span class="text-muted text-decoration-line-through small">$<%= Number(item.price).toFixed(2) %></span>
+                        <span class="fw-semibold text-success">$<%= Number(item.effectivePrice).toFixed(2) %></span>
+                        <span class="badge bg-success-subtle text-success align-self-start mt-1"><%= Number(item.discountPercentage).toFixed(2) %>% off</span>
+                      </div>
+                    <% } else { %>
+                      <div class="fw-semibold mb-2">$<%= Number(item.price).toFixed(2) %></div>
+                    <% } %>
+                    <% if (item.offerMessage) { %>
+                      <p class="text-muted small mb-2"><%= item.offerMessage %></p>
+                    <% } %>
+                    <a href="/product/<%= item.id %>" class="btn btn-outline-primary btn-sm">Shop now</a>
+                  </div>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </main>
+
+<% const orderHistoryScripts = `
+  <script>
+    (() => {
+      const printButton = document.getElementById('print-orders-btn');
+      if (!printButton) return;
+
+      const openAll = () => {
+        const sections = document.querySelectorAll('#order-history .accordion-collapse');
+        sections.forEach(section => {
+          section.dataset.wasOpen = section.classList.contains('show') ? '1' : '0';
+          section.classList.add('show');
+        });
+      };
+
+      const restore = () => {
+        const sections = document.querySelectorAll('#order-history .accordion-collapse');
+        sections.forEach(section => {
+          if (section.dataset.wasOpen === '0') {
+            section.classList.remove('show');
+          }
+          delete section.dataset.wasOpen;
+        });
+      };
+
+      window.addEventListener('afterprint', restore);
+
+      printButton.addEventListener('click', () => {
+        openAll();
+        window.print();
+      });
+    })();
+  </script>
+`; %>
+
+<%- include('partials/footer', { extraScripts: orderHistoryScripts }) %>

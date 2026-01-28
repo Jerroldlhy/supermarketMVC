@@ -1,0 +1,317 @@
+<%- include('partials/head', { title: 'Payment | Supermarket App' }) %>
+<%- include('partials/navbar', { user, activePage: 'cart' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div>
+        <p class="mb-1 text-muted">Secure checkout</p>
+        <h2 class="mb-0">Choose your payment method</h2>
+      </div>
+      <div class="text-md-end">
+        <a href="/cart" class="btn btn-outline-secondary">Back to cart</a>
+      </div>
+    </div>
+
+    <% if (messages && messages.length) { %>
+      <div class="alert alert-warning">
+        <% messages.forEach(function(message) { %>
+          <div><%= message %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% if (errors && errors.length) { %>
+      <div class="alert alert-danger">
+        <% errors.forEach(function(message) { %>
+          <div><%= message %></div>
+        <% }); %>
+      </div>
+    <% } %>
+
+    <% const paymentSubtotal = Number(subtotal || 0); %>
+    <% const paymentDelivery = Number(deliveryFee || 0); %>
+    <% const paymentTotalValue = Number(total || 0); %>
+    <% const paymentTotalText = paymentTotalValue.toFixed(2); %>
+    <% const displayCurrency = currency || 'SGD'; %>
+    <% const displaySymbol = currencySymbol || '$'; %>
+    <% const displaySubtotal = Number(convertedSubtotal || paymentSubtotal).toFixed(2); %>
+    <% const displayDelivery = Number(convertedDeliveryFee || paymentDelivery).toFixed(2); %>
+    <% const displayTotal = Number(convertedTotal || paymentTotalValue).toFixed(2); %>
+
+    <% if (!cart || cart.length === 0) { %>
+      <div class="empty-state text-center py-5">
+        <h3>Your cart is empty</h3>
+        <p class="text-muted">Add items before selecting a payment method.</p>
+        <a href="/shopping" class="btn btn-primary">Start shopping</a>
+      </div>
+    <% } else { %>
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <div class="alert alert-info">
+            <strong>Simple steps:</strong>
+            <ol class="mb-0 mt-2">
+              <li>Choose a payment option below.</li>
+              <li>Follow the on-screen instructions to pay.</li>
+              <li>Wait for the confirmation screen.</li>
+            </ol>
+          </div>
+          <div class="card shadow-sm mb-4">
+            <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">Payment currency</div>
+                <div class="small text-muted">Choose a currency for PayPal/card transactions.</div>
+                <div class="small text-muted">NETS QR charges in SGD.</div>
+              </div>
+              <form action="/cart/payment/currency" method="POST" class="d-flex gap-2 align-items-center">
+                <select name="currency" class="form-select">
+                  <% (availableCurrencies || []).forEach(function(option) { %>
+                    <option value="<%= option %>" <%= option === displayCurrency ? 'selected' : '' %>><%= option %></option>
+                  <% }); %>
+                </select>
+                <button type="submit" class="btn btn-outline-primary">Update</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">PayPal</h5>
+                  <p class="card-text text-muted">Pay quickly with your PayPal account.</p>
+                  <p class="small text-muted mb-2">Click the PayPal button and log in when asked.</p>
+                  <div id="paypal-button-container" class="border rounded p-2 bg-light"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">Debit or credit card</h5>
+                  <p class="card-text text-muted">Pay directly using PayPal card processing.</p>
+                  <p class="small text-muted mb-2">Enter your card details and confirm the payment.</p>
+                  <div id="paypal-card-button-container" class="border rounded p-2 bg-light"></div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                  <h5 class="card-title">Stripe checkout</h5>
+                  <p class="card-text text-muted">Pay with card via Stripe secure checkout.</p>
+                  <p class="small text-muted mb-2">You'll be redirected to complete the payment.</p>
+                  <button class="btn btn-dark w-100" type="button" id="stripe-checkout-btn">Pay with Stripe</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm mt-4">
+            <div class="card-body">
+              <h5 class="card-title">NETS QR</h5>
+              <p class="card-text text-muted">Generate a QR code and pay with your bank app.</p>
+              <p class="small text-muted mb-2">Use your phone to scan the QR code and complete payment in your bank app.</p>
+              <% if (displayCurrency !== 'SGD') { %>
+                <div class="alert alert-warning small mb-3">NETS QR only supports SGD. Your charge will be in SGD $<%= paymentTotalText %>.</div>
+              <% } %>
+              <form action="/nets-qr/request" method="POST" id="nets-form">
+                <input type="hidden" name="cartTotal" value="<%= paymentTotalText %>">
+                <button type="submit" class="btn btn-info w-100" id="nets-submit">Generate NETS QR</button>
+              </form>
+            </div>
+          </div>
+
+          <div id="paypal-msg" class="small text-danger mt-3" style="display:none;"></div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card summary-card shadow-sm">
+            <div class="card-body">
+              <h5 class="card-title mb-3">Order summary</h5>
+              <ul class="list-unstyled mb-4">
+                <li class="d-flex justify-content-between">
+                  <span>Subtotal</span>
+                  <span><%= displaySymbol %><%= displaySubtotal %></span>
+                </li>
+                <li class="d-flex justify-content-between">
+                  <span>Delivery fee</span>
+                  <span><%= displaySymbol %><%= displayDelivery %></span>
+                </li>
+                <li class="d-flex justify-content-between fw-semibold">
+                  <span>Total</span>
+                  <span><%= displaySymbol %><%= displayTotal %></span>
+                </li>
+              </ul>
+              <% if (displayCurrency !== 'SGD') { %>
+                <div class="small text-muted">Base currency SGD: $<%= paymentTotalText %></div>
+              <% } %>
+              <div class="alert alert-light mb-0">
+                <div class="small text-muted">Delivery method</div>
+                <div class="fw-semibold">
+                  <%= deliveryMethod === 'delivery' ? 'Delivery' : 'Store pickup' %>
+                </div>
+                <% if (deliveryMethod === 'delivery' && deliveryAddress) { %>
+                  <div class="small text-muted mt-2">Address</div>
+                  <div><%= deliveryAddress %></div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<% const paymentScripts = (cart && cart.length) ? `
+  ${PAYPAL_CLIENT_ID ? `<script src="https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&currency=${displayCurrency}&intent=capture&enable-funding=card"></script>` : ''}
+  <script>
+    (function () {
+      var msg = document.getElementById('paypal-msg');
+      var paypalContainer = document.getElementById('paypal-button-container');
+      var cardContainer = document.getElementById('paypal-card-button-container');
+      var stripeButton = document.getElementById('stripe-checkout-btn');
+
+      var paymentInProgress = false;
+
+      function setPaymentInProgress(active) {
+        paymentInProgress = active;
+        var netsButton = document.getElementById('nets-submit');
+        if (netsButton) {
+          netsButton.disabled = active;
+          netsButton.textContent = active ? 'Processing...' : 'Generate NETS QR';
+        }
+        if (stripeButton) {
+          stripeButton.disabled = active;
+          stripeButton.textContent = active ? 'Processing...' : 'Pay with Stripe';
+        }
+      }
+
+      function showError(text) {
+        msg.style.display = 'block';
+        msg.textContent = text || 'Something went wrong. Please try again.';
+      }
+
+      function markPaymentFailed() {
+        fetch('/api/payments/mark-failed', { method: 'POST' }).catch(function () {});
+      }
+
+      var amount = '${displayTotal}';
+      var currency = '${displayCurrency}';
+
+      function buildButtons(method) {
+        return {
+          onClick: function (data, actions) {
+            if (paymentInProgress) {
+              showError('Payment is already in progress.');
+              return actions.reject();
+            }
+            setPaymentInProgress(true);
+            return actions.resolve();
+          },
+          createOrder: function () {
+            return fetch('/api/paypal/create-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ amount: amount, currency: currency, method: method })
+            }).then(function (res) {
+              return res.json();
+            }).then(function (order) {
+              if (!order || !order.id) {
+                throw new Error('Invalid PayPal order response');
+              }
+              return order.id;
+            }).catch(function () {
+              setPaymentInProgress(false);
+              showError('Unable to start PayPal checkout.');
+            });
+          },
+          onApprove: function (data) {
+            return fetch('/api/paypal/capture-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: data.orderID, method: method })
+            }).then(function (res) {
+              return res.json();
+            }).then(function (capture) {
+              if (capture && capture.status === 'COMPLETED') {
+                window.location.href = '/cart/checkout';
+                return;
+              }
+              setPaymentInProgress(false);
+              showError('Payment capture failed.');
+            }).catch(function () {
+              setPaymentInProgress(false);
+              showError('Payment capture failed.');
+            });
+          },
+          onCancel: function () {
+            setPaymentInProgress(false);
+            markPaymentFailed();
+            showError('Payment cancelled.');
+          },
+          onError: function () {
+            setPaymentInProgress(false);
+            markPaymentFailed();
+            showError('Unable to start PayPal checkout.');
+          }
+        };
+      }
+
+      if (paypalContainer && cardContainer && window.paypal) {
+        paypal.Buttons({
+          ...buildButtons('paypal'),
+          fundingSource: paypal.FUNDING.PAYPAL,
+          style: { layout: 'vertical', color: 'gold', shape: 'rect', label: 'paypal' }
+        }).render('#paypal-button-container');
+
+        paypal.Buttons({
+          ...buildButtons('card'),
+          fundingSource: paypal.FUNDING.CARD,
+          style: { layout: 'vertical', color: 'black', shape: 'rect', label: 'pay' }
+        }).render('#paypal-card-button-container');
+      }
+
+      if (stripeButton) {
+        stripeButton.addEventListener('click', function () {
+          if (paymentInProgress) {
+            showError('Payment is already in progress.');
+            return;
+          }
+          setPaymentInProgress(true);
+          fetch('/api/stripe/create-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: amount, currency: currency })
+          }).then(function (res) {
+            return res.json();
+          }).then(function (data) {
+            if (!data || !data.url) {
+              throw new Error('Stripe session unavailable.');
+            }
+            window.location.href = data.url;
+          }).catch(function () {
+            setPaymentInProgress(false);
+            showError('Unable to start Stripe checkout.');
+          });
+        });
+      }
+
+      var netsForm = document.getElementById('nets-form');
+      if (netsForm) {
+        netsForm.addEventListener('submit', function (event) {
+          if (paymentInProgress) {
+            event.preventDefault();
+            showError('Payment is already in progress.');
+            return;
+          }
+          setPaymentInProgress(true);
+        });
+      }
+
+    })();
+  </script>
+` : null; %>
+
+<%- include('partials/footer', { extraScripts: paymentScripts }) %>

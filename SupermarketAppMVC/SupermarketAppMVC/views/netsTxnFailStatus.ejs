@@ -1,0 +1,25 @@
+<%- include('partials/head', { title: 'NETS Payment Failed' }) %>
+<%- include('partials/navbar', { user, activePage: 'cart' }) %>
+
+<section class="page-section">
+  <div class="container">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="mb-3">Payment failed</h2>
+        <p class="text-muted"><%= message || 'Transaction failed. Please try again.' %></p>
+        <% if (amount) { %>
+          <form action="/nets-qr/request" method="POST" class="mb-3">
+            <input type="hidden" name="cartTotal" value="<%= amount %>">
+            <button type="submit" class="btn btn-danger">Try NETS QR again</button>
+          </form>
+        <% } %>
+        <div class="d-flex flex-column flex-md-row gap-2">
+          <a href="/cart/payment" class="btn btn-outline-secondary">Choose another payment method</a>
+          <a href="/cart" class="btn btn-light">Back to cart</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>
